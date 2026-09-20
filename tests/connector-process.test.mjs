@@ -174,6 +174,12 @@ test("background connector wakes, queues, owns one process, persists results and
     await until(() => acks.length === 2);
     assert.equal(posts.length, 2);
     assert.notEqual(posts[0].id, posts[1].id);
+    // The server sees the ack before the client has received its response and
+    // persisted completion. Wait for that durable receipt, not network timing.
+    await until(async () => {
+      const saved = JSON.parse(await readFile(config + ".listener.json"));
+      return saved.jobs[1]?.status === "done" && saved.jobs[2]?.status === "done";
+    });
     const state = JSON.parse(await readFile(config + ".listener.json"));
     assert.equal(state.jobs[1].status, "done");
     assert.equal(state.jobs[2].status, "done");
