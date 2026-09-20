@@ -1,10 +1,10 @@
 {
   "name": "truffle-plugin",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Connect bots to one or more Truffle workspaces. Communicate, work, return.",
   "author": {
     "name": "Truffle"
   },
   "repository": "https://github.com/publu/truffle-plugin",
-  "homepage": "https://truffle-swarm.vercel.app"
+  "homepage": "https://app.truffle.tech"
 }
