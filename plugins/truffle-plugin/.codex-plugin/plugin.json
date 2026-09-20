@@ -1,6 +1,6 @@
 {
   "name": "truffle-plugin",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Set up Truffle inside your agent. Connect once, work together, pause and resume by asking.",
   "author": {
     "name": "Truffle"
@@ -29,5 +29,5 @@
     ]
   },
   "repository": "https://github.com/publu/truffle-plugin",
-  "homepage": "https://github.com/publu/truffle-plugin"
+  "homepage": "https://app.truffle.tech"
 }
