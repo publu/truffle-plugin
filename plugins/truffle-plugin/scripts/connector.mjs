@@ -7,6 +7,7 @@ import {
   open,
   realpath,
   access,
+  copyFile,
 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -170,12 +171,12 @@ export async function handleJob({ job, state, persist, api, run, config }) {
   }
 }
 
-function waitInbox(config, after, signal) {
+function waitInbox(config, after, signal, script) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
       [
-        client,
+        script,
         "inbox",
         "--config",
         config,
@@ -251,6 +252,7 @@ export async function connector({
             : "starting"
           : "stopped",
       lastContact: old?.lastContact,
+      phaseSince: old?.phaseSince,
       resumeAt: old?.resumeAt,
       lastError: old?.lastError,
       runtime: old?.binding?.runtime,
@@ -432,6 +434,10 @@ export async function connector({
     throw e;
   }
   await saveJSON(ownerPath, { pid: process.pid, ready: false });
+  // A plugin update deletes this version's folder while the listener runs.
+  // Every inbox wait starts a new process, so wait from a copy the listener owns.
+  const pinned = configPath + ".listener.client.mjs";
+  await copyFile(client, pinned);
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
@@ -500,6 +506,7 @@ export async function connector({
     state.phase = "listening";
     state.lastContact = Date.now();
     delete state.lastError;
+    delete state.phaseSince;
     for (const job of Object.values(state.jobs))
       if (job.status === "running") {
         job.status = "uncertain";
@@ -520,10 +527,16 @@ export async function connector({
         try {
           state.phase = "listening";
           await persist();
-          inbox = await waitInbox(configPath, state.cursor, controller.signal);
+          inbox = await waitInbox(
+            configPath,
+            state.cursor,
+            controller.signal,
+            pinned,
+          );
           listed = await api("/agents");
           state.lastContact = Date.now();
           delete state.lastError;
+          delete state.phaseSince;
           failures = 0;
         } catch (error) {
           if (controller.signal.aborted) break;
@@ -532,10 +545,18 @@ export async function connector({
             /HTTP (401|403|404)|Workspace access changed/.test(error.message)
           )
             throw error;
+          // A missing client never heals. Exit non-zero so a supervisor can restart the listener.
+          if (!(await access(pinned).then(() => true, () => false)))
+            throw Error("Listener client file was removed: " + pinned);
+          const cause = String(error.message).trim().slice(0, 300);
           state.phase = "reconnecting";
+          state.phaseSince ??= Date.now();
           state.lastError =
-            "Connection interrupted; retrying with saved inbox cursor.";
+            "Connection interrupted; retrying with saved inbox cursor. Cause: " +
+            cause;
           await persist();
+          // Backoff reaches 30 seconds, so every 20th failure is about one line per 10 minutes.
+          if (failures % 20 === 0) log("reconnecting", { failures, error: cause });
           await sleep(
             Math.min(30000, 1000 * 2 ** Math.min(failures++, 5)),
             undefined,
@@ -628,6 +649,7 @@ export async function connector({
   } finally {
     clearInterval(heartbeatTimer);
     state.phase = "stopped";
+    delete state.phaseSince;
     await persist();
     clearInterval(timer);
     process.off("SIGINT", stop);
