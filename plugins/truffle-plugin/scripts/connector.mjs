@@ -8,6 +8,7 @@ import {
   realpath,
   access,
   copyFile,
+  chmod,
 } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -437,7 +438,6 @@ export async function connector({
   // A plugin update deletes this version's folder while the listener runs.
   // Every inbox wait starts a new process, so wait from a copy the listener owns.
   const pinned = configPath + ".listener.client.mjs";
-  await copyFile(client, pinned);
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
@@ -502,6 +502,12 @@ export async function connector({
   const heartbeatTimer = setInterval(() => void heartbeat(), 30000);
   heartbeatTimer.unref();
   try {
+    // copyFile keeps the source mode. A read-only install would leave a copy that
+    // the next start cannot overwrite, so write a new file and rename it into place.
+    const temp = pinned + "." + randomUUID() + ".tmp";
+    await copyFile(client, temp);
+    await chmod(temp, 0o600);
+    await rename(temp, pinned);
     await api("/me");
     state.phase = "listening";
     state.lastContact = Date.now();

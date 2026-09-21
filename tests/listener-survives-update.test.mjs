@@ -2,7 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
-import { mkdtemp, mkdir, writeFile, readFile, rm, cp } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  cp,
+  chmod,
+  stat,
+} from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 
@@ -19,6 +28,7 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
   // The installed plugin: a versioned folder that the next update deletes.
   const installed = dir + "/plugin-0.0.1/scripts";
   await cp("plugins/truffle-plugin/scripts", installed, { recursive: true });
+  await chmod(installed + "/client.mjs", 0o444);
   const events = [],
     posts = [],
     acks = [],
@@ -148,6 +158,20 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
     assert.equal(start.code, 0, start.err);
     assert.equal(JSON.parse(start.out).listening, true);
     await until(() => afters.includes(0));
+
+    // The install is read-only. The listener's copy must not inherit that, or the next start cannot replace it.
+    assert.equal(
+      (await stat(config + ".listener.client.mjs")).mode & 0o777,
+      0o600,
+    );
+    await command(current, "pause");
+    await until(async () => !(await status()).running);
+    const waits = afters.length;
+    const again = await command(installed + "/truffle.mjs", "resume");
+    assert.equal(again.code, 0, again.err);
+    assert.equal(JSON.parse(again.out).listening, true);
+    await until(() => afters.length > waits);
+    assert.equal((await status()).phase, "listening");
 
     // The update removes the folder this listener was started from.
     await rm(dir + "/plugin-0.0.1", { recursive: true, force: true });
