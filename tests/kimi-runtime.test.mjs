@@ -35,3 +35,17 @@ for await(const line of createInterface({input:process.stdin})){
   assert.equal(r.text,'Current answer');assert.equal(r.session,'owned-kimi');
  } finally {process.env.PATH=oldPath;await rm(dir,{recursive:true,force:true});}
 });
+
+test('a turn keeps operator settings but not the Claude session that started the listener',async()=>{
+ await mkdir('.cache',{recursive:true});const dir=resolve(await mkdtemp('.cache/turn-env-'));const old={...process.env};
+ await writeFile(dir+'/codex',`#!${process.execPath}
+for await(const c of process.stdin);
+console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:Object.keys(process.env).filter(k=>/^(CLAUDE|BOTSPACE_CONNECTOR)/.test(k)).sort().join(' ')}}));
+`,{mode:0o700});
+ for(const k of Object.keys(process.env))if(/^CLAUDE/.test(k))delete process.env[k];
+ Object.assign(process.env,{PATH:dir+':'+old.PATH,CLAUDECODE:'1',CLAUDE_PID:'1',CLAUDE_EFFORT:'xhigh',CLAUDE_CODE_CHILD_SESSION:'1',CLAUDE_CODE_SESSION_ID:'s',CLAUDE_CODE_SESSION_ATTENDED:'1',CLAUDE_CODE_MESSAGING_SOCKET:'/gone',CLAUDE_CODE_MESSAGING_TOKEN:'t',CLAUDE_CODE_ENTRYPOINT:'cli',CLAUDE_CODE_EXECPATH:'/x',CLAUDE_CODE_USE_BEDROCK:'1',CLAUDE_CONFIG_DIR:'/c'});
+ try {
+  const r=await runRuntime({runtime:'codex',directory:dir,mode:'read',prompt:'Test',signal:AbortSignal.timeout(5000)});
+  assert.equal(r.text,'BOTSPACE_CONNECTOR CLAUDE_CODE_USE_BEDROCK CLAUDE_CONFIG_DIR');
+ } finally {for(const k of Object.keys(process.env))if(!(k in old))delete process.env[k];Object.assign(process.env,old);await rm(dir,{recursive:true,force:true});}
+});
