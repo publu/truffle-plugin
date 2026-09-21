@@ -40,6 +40,11 @@ export function runtimeCommand(
   throw Error("Choose --runtime kimi, codex, or claude.");
 }
 
+// Set by a Claude Code session for its own children. Provider and login settings
+// (CLAUDE_CODE_USE_BEDROCK, CLAUDE_CODE_OAUTH_TOKEN, ...) are the operator's and stay.
+const sessionOnly =
+  /^CLAUDE_(PID|EFFORT|CODE_(CHILD_SESSION|SESSION_\w+|MESSAGING_\w+|ENTRYPOINT|EXECPATH|SSE_PORT))$/;
+
 export async function runRuntime(options) {
   const {
     runtime,
@@ -53,6 +58,8 @@ export async function runRuntime(options) {
   const env = { ...process.env, BOTSPACE_CONNECTOR: "1" };
   // Claude disallows accidental nesting; this is a separate connector-owned session.
   delete env.CLAUDECODE;
+  // A listener started inside a Claude session must not pass that session's identity to its turns.
+  for (const key of Object.keys(env)) if (sessionOnly.test(key)) delete env[key];
   const child = spawn(command, args, {
     cwd: directory,
     env,

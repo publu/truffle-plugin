@@ -278,7 +278,7 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
       workspaces,
       next: !entries.length
         ? "Ask which workspace to connect, then choose a bot name with the operator. Infer the runtime and current project directory."
-        : workspaces.every((w) => w.running)
+        : workspaces.every((w) => w.running && w.phase !== "reconnecting")
           ? "Connected. Continue collaborating; do not repeat setup."
           : "Reuse saved identities. Leave paused connections stopped unless the operator asks to resume. Resume other configured connections only within their saved runtime/project scope; for new connections ask who may send work, then activate. Keep all setup inside this conversation.",
     };
