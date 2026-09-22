@@ -5,19 +5,33 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 const marker = "<!-- Managed by botspace setup. -->";
 export async function setup({ target, directory, global = false }) {
-  if (!["codex", "claude", "kimi"].includes(target))
+  if (!["codex", "claude", "kimi", "hermes"].includes(target))
     throw Error(
-      "Use --target codex, --target claude, or --target kimi. Other shell-capable agents can use the botspace command directly.",
+      "Use --target codex, --target claude, --target kimi, or --target hermes. Other shell-capable agents can use the botspace command directly.",
     );
   if (global && directory)
     throw Error("Choose --global or --directory, not both.");
-  const base = resolve(global ? homedir() : directory || process.cwd());
+  if (target === "hermes" && !global)
+    throw Error("Hermes loads skills from its profile. Run setup --target hermes --global (set HERMES_HOME to select a different Hermes profile).");
+  const base = resolve(
+    target === "hermes"
+      ? process.env.HERMES_HOME || join(homedir(), ".hermes")
+      : global ? homedir() : directory || process.cwd(),
+  );
   const parts = [
-    target === "claude" ? ".claude" : ".agents",
+    ...(target === "hermes" ? [] : [target === "claude" ? ".claude" : ".agents"]),
     "skills",
     "botspace",
   ];
   let current = base;
+  if (target === "hermes") {
+    try {
+      if ((await lstat(base)).isSymbolicLink())
+        throw Error("Refusing to modify a symlinked Hermes profile.");
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+    }
+  }
   // Do not overwrite another integration through a symlinked skill directory.
   for (const part of parts) {
     current = join(current, part);
@@ -53,7 +67,7 @@ export async function setup({ target, directory, global = false }) {
       "The Truffle CLI is installed with npm. Run `botspace help` to check availability. Node.js 22.13+ is required.",
     )
     .replaceAll('node "$BOTSPACE_CLI"', "botspace");
-  if (target === "kimi") {
+  if (target === "kimi" || target === "hermes") {
     const cli = fileURLToPath(new URL("./botspace.mjs", import.meta.url));
     // The checkout is the installation, not a temporary download; updates keep this path stable.
     const quoted = "'" + cli.replaceAll("'", "'\"'\"'") + "'";
@@ -66,11 +80,31 @@ export async function setup({ target, directory, global = false }) {
       .replaceAll('node "$BOTSPACE_CLI"', "node " + quoted)
       .replaceAll("BOTSPACE_CLI", "the bundled client");
   }
-  const section = content.indexOf("\n## Install and update");
-  if (section >= 0) content = content.slice(0, section);
-  if (target === "kimi")
+  content = content.replace(/\n## Install and update\n[\s\S]*?(?=\n## |$)/, "");
+  if (target === "hermes") {
+    // Hermes discovers portable skills but cannot enforce our read-only runner
+    // contract. Keep onboarding inside its existing, user-controlled session.
+    for (const heading of ["Automatic activation", "Keep the interactive TUI available", "First-run conversation: own the setup", "Wait without polling", "Automatic runtime connector"])
+      content = content.replace(new RegExp("\\n## " + heading + "\\n[\\s\\S]*?(?=\\n## |$)"), "");
+    content = content.replace(
+      /1\. \*\*Truffle plugin:\*\*[^\n]+/,
+      "1. **Truffle plugin:** connects this existing Hermes conversation to a swarm through the bundled client. Hermes keeps its tools, model account, and current session permissions. Background Hermes turns are not supported.",
+    );
+    content = content.replace("## Connect once", `## First-run conversation: own the setup
+
+Run onboard with the saved store and profile to inspect the existing connection. Reuse the workspace URL, project, goal, and identity from the user's request. Ask only for a missing workspace. Run connect when needed, then use context, inbox, tasks, and pages to do the authorized work in this conversation. The examples below use the stable bundled client.
+
+Do not run activate, listen, resume, inbox --wait, or a polling loop for Hermes. Do not claim to be listening or to have started background agents. Finish with the actual connection result and explain that new work is handled when this conversation runs. For managed background work, the user can explicitly choose an installed Codex, Claude, or Kimi runner with its own identity and permissions; never substitute a runtime silently.
+
+## Connect once`);
+  }
+  if (target === "kimi" || target === "hermes")
     content +=
-      "\n## Install and update\n\nSource: https://github.com/publu/truffle-plugin. Update the stable checkout with git pull --ff-only, rerun this setup command, then pause and resume configured workspaces using the updated client. Keep workspace credentials and saved settings.\n\n" +
+      "\n## Install and update\n\nSource: https://github.com/publu/truffle-plugin. Update the stable checkout with git pull --ff-only, rerun this setup command, then " +
+      (target === "hermes"
+        ? "run /reload-skills in Hermes."
+        : "pause and resume configured workspaces using the updated client.") +
+      " Keep workspace credentials and saved settings.\n\n" +
       marker +
       "\n";
   else
@@ -86,7 +120,10 @@ export async function setup({ target, directory, global = false }) {
     target,
     scope: global ? "global" : "project",
     installed: true,
+    path: destination,
     updated: !!existing,
-    next: "Start a new agent session and ask it to use Truffle with your workspace URL. Credentials and other agent settings were preserved.",
+    next: target === "hermes"
+      ? "Run /reload-skills in Hermes, then ask it to use Truffle with your workspace URL. This connects your existing Hermes conversation; managed background agents currently require Codex, Claude, or Kimi. Credentials and other agent settings were preserved."
+      : "Start a new agent session and ask it to use Truffle with your workspace URL. Credentials and other agent settings were preserved.",
   };
 }

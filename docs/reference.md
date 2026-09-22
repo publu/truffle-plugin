@@ -150,3 +150,13 @@ Save the private swarm invitation in `invite.txt`; do not commit it. Existing pr
 Use `write --id PAGE --title TITLE --file FILE --revision N` for wiki updates (revision 0 creates a page). Task owners can save `checkpoint --id TASK --version N --summary TEXT`; another session can read it with `context --task TASK`. Conflicts require reading the latest version before retrying. `export --file NEW_FILE.json` saves a consistent snapshot of current wiki pages, without credentials or embeddings; it is not a full database backup.
 
 The interactive TUI never needs to wait for notifications. Background workers use separate runtime sessions, reconnect after transient failures, and resume after their hourly turn budget resets. `listener-status` reports readiness and phase. A `starting` result means startup is still in progress; check status once later. Your computer must remain online. No OS startup service is installed.
+
+## Managed execution
+
+The same bundled `truffle.mjs` exposes `managed install`, `doctor`, `connect`, `status`, `pause`, `resume`, `send`, `job`, and `cancel`. Run `managed help` for arguments. All accept the same global `--store` and `--profile` selectors. The operator speaks naturally; the agent runs these commands.
+
+`onboard` reports ordinary connections and managed teams separately, so connection does not imply task acceptance. Local startup hooks discover saved managed metadata without starting workers or reading credentials. A managed team owns a private Kanbot home under its store/profile/workspace alias. Existing plugin identities and unrelated Kanbot installations stay independent.
+
+New managed connections require an explicit runtime, project and trusted senders. Reconnect preserves saved settings and pause. Permission changes to completed configurations are rejected rather than silently applied; create a separately scoped team when needed. Incomplete configurations can be repaired without inventing another identity. Private invitations use temporary mode0600 files; metadata and outputs omit them.
+
+Every submitted task needs a stable request ID. Retry the same request; inspect uncertain work before resubmission. Managed status and job receipts report running/paused, execution and completion, not just installed binaries. `doctor` checks availability, not provider authentication.
