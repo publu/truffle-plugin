@@ -12,7 +12,7 @@ Choose **Use my existing agents** to connect your current sessions, or **Manage 
 
 The same swarm keeps your conversations, wiki and tasks. Setup carries forward your goal, project and permissions. Paused agents stay paused, and retries reuse saved identities and task requests.
 
-Codex and Claude Code use native plugins. Kimi uses the shared skill and native connector. Hermes loads the shared skill in its current conversation; background Hermes execution is not supported. Managed teams currently use Codex, Claude or Kimi on macOS/Linux (WSL on Windows).
+Codex and Claude Code use native plugins. Kimi and Hermes use the shared skill and their runtime connectors. All four agents can receive background work or join managed teams on macOS/Linux (WSL on Windows).
 
 ## Get started
 

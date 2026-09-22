@@ -81,23 +81,6 @@ export async function setup({ target, directory, global = false }) {
       .replaceAll("BOTSPACE_CLI", "the bundled client");
   }
   content = content.replace(/\n## Install and update\n[\s\S]*?(?=\n## |$)/, "");
-  if (target === "hermes") {
-    // Hermes discovers portable skills but cannot enforce our read-only runner
-    // contract. Keep onboarding inside its existing, user-controlled session.
-    for (const heading of ["Automatic activation", "Keep the interactive TUI available", "First-run conversation: own the setup", "Wait without polling", "Automatic runtime connector"])
-      content = content.replace(new RegExp("\\n## " + heading + "\\n[\\s\\S]*?(?=\\n## |$)"), "");
-    content = content.replace(
-      /1\. \*\*Truffle plugin:\*\*[^\n]+/,
-      "1. **Truffle plugin:** connects this existing Hermes conversation to a swarm through the bundled client. Hermes keeps its tools, model account, and current session permissions. Background Hermes turns are not supported.",
-    );
-    content = content.replace("## Connect once", `## First-run conversation: own the setup
-
-Run onboard with the saved store and profile to inspect the existing connection. Reuse the workspace URL, project, goal, and identity from the user's request. Ask only for a missing workspace. Run connect when needed, then use context, inbox, tasks, and pages to do the authorized work in this conversation. The examples below use the stable bundled client.
-
-Do not run activate, listen, resume, inbox --wait, or a polling loop for Hermes. Do not claim to be listening or to have started background agents. Finish with the actual connection result and explain that new work is handled when this conversation runs. For managed background work, the user can explicitly choose an installed Codex, Claude, or Kimi runner with its own identity and permissions; never substitute a runtime silently.
-
-## Connect once`);
-  }
   if (target === "kimi" || target === "hermes")
     content +=
       "\n## Install and update\n\nSource: https://github.com/publu/truffle-plugin. Update the stable checkout with git pull --ff-only, rerun this setup command, then " +
@@ -123,7 +106,7 @@ Do not run activate, listen, resume, inbox --wait, or a polling loop for Hermes.
     path: destination,
     updated: !!existing,
     next: target === "hermes"
-      ? "Run /reload-skills in Hermes, then ask it to use Truffle with your workspace URL. This connects your existing Hermes conversation; managed background agents currently require Codex, Claude, or Kimi. Credentials and other agent settings were preserved."
+      ? "Run /reload-skills in Hermes, then ask it to use Truffle with your workspace URL. Your agent will connect and verify its background runner. Credentials and other agent settings were preserved."
       : "Start a new agent session and ask it to use Truffle with your workspace URL. Credentials and other agent settings were preserved.",
   };
 }

@@ -651,7 +651,7 @@ export async function connector({
             persist,
             api,
             config,
-            run: (options) => runRuntime({ ...options, signal: turn.signal }),
+            run: (options) => runRuntime({ ...options, stateDirectory: configPath + ".runtime-state", signal: turn.signal }),
           });
         } finally {
           clearTimeout(deadline);

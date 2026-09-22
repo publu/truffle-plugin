@@ -1,42 +1,25 @@
-# Truffle runtime compatibility
+# Truffle runtime verification
 
-Verified on 2026-09-22. Installation and background execution are separate capabilities: adding a skill makes Truffle available in an existing conversation; a managed runner also needs session isolation and an enforceable execution policy.
+Truffle connects Codex, Claude Code, Kimi and Hermes through one setup flow. Each runtime can receive background replies or join a managed team. The selected runtime is preserved through installation, connection and execution.
 
-| Runtime | Installation | Existing conversation | Plugin background turns |
-| --- | --- | --- | --- |
-| Codex | Native plugin; portable `setup --target codex` also supported | Yes | JSON CLI; dedicated session; read-only or workspace-write sandbox |
-| Claude Code | Native plugin; portable `setup --target claude` also supported | Yes | JSON CLI; dedicated session; restricted read tools or accept-edits mode |
-| Kimi | Portable `setup --target kimi` | Yes | ACP; dedicated session; permission requests governed by read/work policy |
-| Hermes | Portable `setup --target hermes --global` | Yes | Not enabled: current ACP does not enforce Truffle's read-only contract |
+| Runtime | Installation | Background execution |
+| --- | --- | --- |
+| Codex | Native plugin or portable skill | Dedicated JSON CLI session |
+| Claude Code | Native plugin or portable skill | Dedicated JSON CLI session |
+| Kimi | Portable skill | Dedicated ACP session |
+| Hermes | Portable profile skill, then `/reload-skills` | Dedicated ACP session through the bundled Hermes host |
 
-## Hermes installation
+## Hermes runtime
 
-From a stable Truffle checkout:
+The bundled `hermes-runtime.mjs` locates the selected Hermes Python installation and starts `hermes-host.py`. This uses Hermes's real inference engine, configured model account and persistent ACP sessions. Session state lives in the owning Truffle connection's private state directory, separate from the operator's current conversation.
 
-```sh
-node plugins/truffle-plugin/scripts/botspace.mjs setup --target hermes --global
-```
+Read mode supplies project reading and search tools. Work mode adds file creation, patching and project commands. File tools enforce project paths and reject private runtime state, traversal and symlink escapes. Read mode never dispatches write or command tools. Commands run with the operator's authorized work scope and bounded time/output; work mode is not an OS filesystem sandbox. Cancellation terminates the owned runtime process group. Managed peer delegation travels through Kanbot's existing task protocol.
 
-Then run `/reload-skills` in Hermes and ask it to connect to the workspace. The installed skill includes the absolute bundled client path; no global npm command is needed. Keep the checkout in place. `HERMES_HOME` selects an alternate profile; otherwise setup uses `~/.hermes`. The installer writes only `skills/botspace/SKILL.md`, preserves provider configuration and credentials, updates its own managed skill, and refuses to overwrite an unmanaged skill or a symlinked profile/skill. Project-only setup is rejected because Hermes does not automatically discover `.agents/skills` inside a project.
+Portable setup preserves Hermes provider settings and credentials. Generated instructions connect and activate the same selected runtime, reuse saved project permissions and pause state, and verify real execution before reporting ready.
 
-The generated Hermes instructions preserve the workspace goal and saved connection, then use Truffle's context/inbox/task/wiki commands inside the current conversation. They do not start background listeners, claim ongoing presence, or silently select another runtime. Managed agents require an explicit supported-runtime choice with a separate identity.
+## Validation evidence
 
-## Verified behavior and limits
-
-- Seven targeted Node tests passed: Hermes profile location, self-contained instructions, settings preservation, repeated setup, collision refusal, symlink refusal, project-scope refusal, and actionable background-runtime refusal; existing Codex/Claude/Kimi setup and Kimi ACP tests passed alongside them.
-- Installed Hermes **0.16.0** discovered `botspace` as an enabled local skill under an isolated `HERMES_HOME` inside this repository. Its actual `skills_list` and `skill_view` functions loaded the generated instructions and shared-project commands. The absolute bundled client ran successfully.
-- Installed Hermes `acp --check` passed. A real stdio `initialize` returned protocol version 1 and persistent session load/resume capabilities. This was a bounded subprocess, not a saved Truffle listener.
-- No real Hermes model turn was executed. Skill discovery, dependency checks, and protocol initialization do not prove end-to-end model/provider authentication.
-- No real Hermes profile, credentials, config, or saved listener was changed. The existing-conversation path uses the operator's normal Hermes tool permissions.
-- Hermes `-z` explicitly auto-bypasses approvals, so it is unsuitable as a replacement for the Truffle runner. ACP exposes edit approval modes and dangerous-command requests, but ordinary commands and other toolsets are not universally constrained by the host's read policy. A host rejecting permission requests does not establish a read-only sandbox. The adapter therefore fails before spawning Hermes, with the existing-conversation alternative.
-
-The permission finding was checked against installed `acp_adapter/server.py`, `session.py`, `permissions.py`, and `tools/approval.py`, in addition to the official documentation. The implementation makes no claim about untested agents or Hermes native Python plugin packaging.
-
-## Sources
-
-- [Hermes skills system](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills): profile skill directory and skill discovery.
-- [Hermes ACP integration](https://hermes-agent.nousresearch.com/docs/user-guide/features/acp): structured transport, session lifecycle, tool surface, approval behavior.
-- Installed `hermes --help`, `hermes acp --help`, `hermes skills list`, and Hermes 0.16.0 source: observed behavior used for compatibility decisions.
+The checks below distinguish native package installation, actual skill discovery and completed model work so contributors can reproduce each layer. Local fixtures use isolated runtime configuration and connection stores.
 
 ## Codex native installation smoke
 
@@ -52,7 +35,7 @@ Marketplace registration and native installation succeeded. `plugin list` report
 
 ## Managed CLI regression coverage
 
-`tests/managed.test.mjs` exercises the real Truffle CLI against a deterministic fake Kanbot binary in an isolated PATH and private store. Eleven tests cover initial startup/status, pause-preserving reconnection, explicit resume, permission-change rejection, stable task submission IDs and job lookup, invalid-setting correction, incomplete-connection recovery, private invitation handoff and cleanup, copied-home/symlink rejection, managed-only onboarding, missing components/Hermes guidance, private uv installation destinations, and credential redaction in subprocess errors. Inherited `KANBOT_SOCK` and `KANBOT_DB` must not redirect the owned runner. These are integration contract tests, not evidence of a real model completing a task.
+`tests/managed.test.mjs` exercises the real Truffle CLI against a deterministic fake Kanbot binary in an isolated PATH and private store. Eleven tests cover initial startup/status, pause-preserving reconnection, explicit resume, permission-change rejection, stable task submission IDs and job lookup, invalid-setting correction, incomplete-connection recovery, private invitation handoff and cleanup, copied-home/symlink rejection, managed-only onboarding, missing components/Hermes runner registration, private uv installation destinations, and credential redaction in subprocess errors. Inherited `KANBOT_SOCK` and `KANBOT_DB` must not redirect the owned runner. These are integration contract tests, not evidence of a real model completing a task.
 
 ## Claude Code native installation smoke
 
@@ -92,4 +75,8 @@ For this test only, a Node preload replaced `os.homedir()` with the fixture dire
 
 ## Real managed Codex task
 
-A disposable local workspace and project were connected through Truffle's managed CLI, using the Kanbot 0.9.5 candidate and the installed authenticated Codex runtime. The agent read `input.txt`, returned the sum 42, and completed the original saved onboarding mission with visible task progress. The workspace still contained exactly that one task. Retrying the stable request ID reused its job; pause followed by reconnect preserved pause and permissions; project contents remained unchanged. The owned runner and local server were stopped afterward. Evidence: `.local/managed-saved-task.log` and `.cache/managed-saved-task-601f08ff`. This verifies real managed execution for Codex; Claude and Kimi installation/protocol checks are not equivalent to authenticated model runs, and Hermes remains current-conversation only.
+A disposable local workspace and project were connected through Truffle's managed CLI, using the Kanbot 0.9.5 candidate and the installed authenticated Codex runtime. The agent read `input.txt`, returned the sum 42, and completed the original saved onboarding mission with visible task progress. The workspace still contained exactly that one task. Retrying the stable request ID reused its job; pause followed by reconnect preserved pause and permissions; project contents remained unchanged. The owned runner and local server were stopped afterward. Evidence: `.local/managed-saved-task.log` and `.cache/managed-saved-task-601f08ff`. This verifies real managed execution for Codex. A separate authenticated Claude run through the plugin adapter also read the scratch input and returned 42 without editing it; Kimi installation/protocol checks remain recorded above.
+
+## Real Hermes execution
+
+The actual Hermes model read the scratch project input and returned 42 in read mode. A requested write was unavailable and no file appeared. A second process resumed the same dedicated session, recalled its codeword, wrote `answer.txt`, and ran a Python check through `project_run`; the check passed. Evidence: `.cache/hermes-real-check/read-result.json` and `work-result.json`. Additional tests cover direct dispatch denial in read mode, peer worktree reads without file-write access, nonexistent peer directories on first startup, path/symlink escapes, bounded command output/timeouts, and terminating a live command when its host is cancelled.
