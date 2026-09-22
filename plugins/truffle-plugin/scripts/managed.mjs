@@ -14,8 +14,8 @@ import { resolve, join, delimiter, relative, sep } from "node:path";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
-const engineVersion = "0.9.5";
-const runtimes = ["codex", "claude", "kimi"];
+const engineVersion = "0.9.6";
+const runtimes = ["codex", "claude", "kimi", "hermes"];
 const aliasPattern = /^[a-z][a-z0-9-]{1,39}$/;
 const root = (base, profile) => join(base, "managed", profile);
 async function ownedPath(base, path) {
@@ -168,7 +168,7 @@ async function engine(base) {
         (Number(version[2]) === 9 && Number(version[3]) < 5)))
   )
     throw Error(
-      "Managed agents need Kanbot 0.9.5 or newer. Run `truffle managed install` to install the supported runner privately.",
+      "Managed agents need Kanbot 0.9.6 or newer. Run `truffle managed install` to install the supported runner privately.",
     );
   return binary;
 }
@@ -429,7 +429,7 @@ export async function managed({
         );
       if (!runtimes.includes(opts.runtime))
         throw Error(
-          "Managed agents support Codex, Claude and Kimi. Hermes can connect in its existing conversation; choose a supported managed runtime.",
+          "Choose codex, claude, kimi, or hermes.",
         );
       const directory = resolve(opts.directory);
       if (!(await stat(directory)).isDirectory())
@@ -543,7 +543,7 @@ export async function managed({
         !selected.includes(connection.runtime)
       )
         throw Error(
-          "Enabled managed runtimes must include the entry runtime and use codex,claude,kimi.",
+          "Enabled managed runtimes must include the entry runtime and use codex,claude,kimi,hermes.",
         );
     }
     if (connection.settings.instructions)

@@ -12,7 +12,7 @@ import {mkdirSync,readFileSync,writeFileSync,appendFileSync,existsSync,statSync}
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 const args=process.argv.slice(2);
-if(args[0]==='--version'){console.log('kanbot 0.9.5');process.exit(0);}
+if(args[0]==='--version'){console.log('kanbot 0.9.6');process.exit(0);}
 if(args[0]!=='swarm')process.exit(2);
 const home=process.env.KANBOT_HOME;
 mkdirSync(home,{recursive:true});
@@ -145,12 +145,13 @@ test('onboard recognizes a managed-only saved team',async t=>{
  assert.doesNotMatch(r.next,/ask which workspace/i);assert.match(r.next,/saved|paused|reuse|resume/i);
 });
 
-test('managed setup explains missing engine, missing runtime and Hermes existing-session alternative',async t=>{
+test('managed setup explains missing engine, missing runtime and connects an installed Hermes runner',async t=>{
  const noEngine=await fixture(t,{engine:false});const e=await noEngine.connect();assert.notEqual(e.code,0);assert.match(e.stderr,/managed install/);
  const noRuntime=await fixture(t,{runtime:false});const r=await noRuntime.connect();assert.notEqual(r.code,0);assert.match(r.stderr,/codex.*not installed/i);
- const f=await fixture(t);const h=await f.run(['managed','connect','--workspace','demo','--url','https://example.test/w/demo','--runtime','hermes','--directory',f.project,'--allow-from','human-owner']);
- assert.notEqual(h.code,0);assert.match(h.stderr,/Hermes.*existing conversation/);
- assert.equal((await f.log()).length,0);
+ const f=await fixture(t);await writeFile(join(f.bin,'hermes'),`#!${process.execPath}\nprocess.exit(0);\n`,{mode:0o700});const h=await f.run(['managed','connect','--workspace','demo','--url','https://example.test/w/demo','--runtime','hermes','--directory',f.project,'--allow-from','human-owner']);
+ assert.equal(okay(h).service.running,true);
+ const calls=await f.log();assert.ok(calls.some(c=>c.command==='connect'&&c.args.includes('hermes')));
+ assert.ok(calls.some(c=>c.command==='start'));
 });
 
 test('managed installation confines uv tools and executables to the private store',async t=>{
@@ -161,7 +162,7 @@ writeFileSync(process.env.FAKE_CALLS,JSON.stringify({args:process.argv.slice(2),
 `,{mode:0o700});
  const result=okay(await f.run(['managed','install']));assert.equal(result.installed,true);assert.equal(result.scope,'private Truffle store');
  const call=JSON.parse(await readFile(f.calls,'utf8'));
- assert.deepEqual(call.args,['tool','install','--force','kanbot==0.9.5']);
+ assert.deepEqual(call.args,['tool','install','--force','kanbot==0.9.6']);
  assert.equal(call.tools,join(f.store,'engines','tools'));assert.equal(call.bin,join(f.store,'engines','bin'));
 });
 

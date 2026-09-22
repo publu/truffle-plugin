@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 
 // Each invocation owns a dedicated session. Never use --last or attach to a TUI.
 export function runtimeCommand(
   runtime,
-  { session, mode = "read", model } = {},
+  { session, mode = "read", model, stateDirectory, readable } = {},
 ) {
   if (runtime === "codex")
     return [
@@ -38,8 +39,8 @@ export function runtimeCommand(
     ];
   if (runtime === "kimi") return ["kimi", ["acp"]];
   if (runtime === "hermes")
-    throw Error("Hermes supports Truffle in your existing conversation: run setup --target hermes --global, then /reload-skills in Hermes. Managed background turns require Codex, Claude, or Kimi because Hermes ACP does not provide the required read-only execution boundary.");
-  throw Error("Choose --runtime kimi, codex, or claude.");
+    return [process.execPath, [fileURLToPath(new URL("./hermes-runtime.mjs", import.meta.url)), "--mode", mode, ...(stateDirectory ? ["--state", stateDirectory] : []), ...(readable ? ["--readable", readable] : [])]];
+  throw Error("Choose --runtime kimi, codex, claude, or hermes.");
 }
 
 // Set by a Claude Code session for its own children. Provider and login settings
@@ -104,7 +105,7 @@ export async function runRuntime(options) {
   exited.catch(() => {});
   const lines = createInterface({ input: child.stdout });
   try {
-    if (runtime === "kimi") {
+    if (runtime === "kimi" || runtime === "hermes") {
       let next = 1,
         collecting = false;
       const pending = new Map();
@@ -120,7 +121,7 @@ export async function runRuntime(options) {
         pending.clear();
       };
       exited.then(
-        () => fail(Error("Kimi ACP stopped before completing the request.")),
+        () => fail(Error(runtime + " ACP stopped before completing the request.")),
         fail,
       );
       lines.on("line", (line) => {
@@ -171,7 +172,7 @@ export async function runRuntime(options) {
           const p = pending.get(event.id);
           pending.delete(event.id);
           event.error
-            ? p.reject(Error("Kimi ACP: " + event.error.message))
+            ? p.reject(Error(runtime + " ACP request failed. Check the runtime login and project scope."))
             : p.resolve(event.result);
         }
       });
@@ -188,7 +189,7 @@ export async function runRuntime(options) {
         ...(session ? { sessionId: session } : {}),
       });
       session ||= opened.sessionId;
-      if (!session) throw Error("Kimi did not return a session ID.");
+      if (!session) throw Error(runtime + " did not return a session ID.");
       await onSession(session);
       if (options.model)
         await rpc("session/set_model", {
@@ -212,7 +213,7 @@ export async function runRuntime(options) {
         prompt: [{ type: "text", text: prompt }],
       });
       if (result.stopReason !== "end_turn")
-        throw Error("Kimi stopped: " + result.stopReason);
+        throw Error(runtime + " stopped: " + result.stopReason);
       child.stdin.end();
       kill();
     } else {
