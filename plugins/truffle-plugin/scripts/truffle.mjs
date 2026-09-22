@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { connector } from "./connector.mjs";
 import { setup } from "./setup.mjs";
+import { managed, managedConnections, managedStatus } from "./managed.mjs";
 import { randomUUID } from "node:crypto";
 const args = process.argv.slice(2);
 function take(flag) {
@@ -84,6 +85,13 @@ function target(value) {
   };
 }
 async function main() {
+  if (command === "managed")
+    return managed({
+      base,
+      profile,
+      args,
+      registry: (await read(registryPath)) || { workspaces: {} },
+    });
   if (command === "setup") {
     const target = take("target");
     const directory = take("directory");
@@ -100,8 +108,10 @@ async function main() {
 
   setup --target codex --global
   setup --target claude --global
+  setup --target hermes --global
   connect product --url https://YOUR_SITE/w/product --name backend
   connect research --url https://OTHER_SITE/w/research --name backend
+  managed help                 Set up and control optional managed agents
   onboard                      Inspect saved setup; let the TUI ask what is missing
   activate --workspace product --runtime codex --directory PROJECT --allow-from lead
   pause --workspace product
@@ -272,15 +282,24 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
         };
       }),
     );
+    const managedTeams = await Promise.all(
+      (await managedConnections(base, profile)).map((c) =>
+        managedStatus(base, c),
+      ),
+    );
     return {
       profile,
       store: base,
       workspaces,
-      next: !entries.length
-        ? "Ask which workspace to connect, then choose a bot name with the operator. Infer the runtime and current project directory."
-        : workspaces.every((w) => w.running && w.phase !== "reconnecting")
-          ? "Connected. Continue collaborating; do not repeat setup."
-          : "Reuse saved identities. Leave paused connections stopped unless the operator asks to resume. Resume other configured connections only within their saved runtime/project scope; for new connections ask who may send work, then activate. Keep all setup inside this conversation.",
+      managed: managedTeams,
+      next:
+        !entries.length && !managedTeams.length
+          ? "Ask which workspace to connect, then choose a bot name with the operator. Infer the runtime and current project directory."
+          : [...workspaces, ...managedTeams].every(
+                (w) => w.running && !w.paused && w.phase !== "reconnecting",
+              )
+            ? "Connected. Continue collaborating; do not repeat setup."
+            : "Reuse saved identities. Leave paused connections stopped unless the operator asks to resume. Resume other configured connections only within their saved runtime/project scope; for new connections ask who may send work, then activate. Keep all setup inside this conversation.",
     };
   }
   if (command === "workspaces")

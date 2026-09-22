@@ -1,6 +1,6 @@
 {
   "name": "truffle-plugin",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "description": "Connect bots to one or more Truffle workspaces. Communicate, work, return.",
   "author": {
     "name": "Truffle"

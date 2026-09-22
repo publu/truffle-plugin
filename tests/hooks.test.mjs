@@ -67,3 +67,48 @@ test("activation reuses profiles, preserves pause, excludes credentials, and tol
   await rm(config + ".listener.stop");
   assert.match(await run(dir), /"paused":false/);
 });
+
+test("activation discovers managed-only teams without exposing runner state or starting work", async (t) => {
+  await mkdir(".cache", { recursive: true });
+  const dir = await mkdtemp(resolve(".cache/hooks-managed-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = join(dir, ".botspace");
+  const team = join(store, "managed", "owner", "project");
+  await mkdir(team, { recursive: true });
+  const metadata = JSON.stringify({
+    alias: "ignored-stored-alias", name: "project-team", runtime: "codex", configured: true,
+    home: "/SECRET_HOME", directory: "/SECRET_PROJECT", token: "SECRET_TOKEN",
+    workspace: "https://example.test/w/project#invite=SECRET_INVITE", allowFrom: "SECRET_SENDER",
+    running: true, paused: false, settings: { instructions: "SECRET_INSTRUCTIONS" },
+  });
+  await writeFile(join(team, "connection.json"), metadata);
+  await mkdir(join(store, "managed", "other", "unrelated"), { recursive: true });
+  await writeFile(join(store, "managed", "other", "unrelated", "connection.json"), JSON.stringify({name:"other-team",runtime:"claude",configured:true}));
+  const before = (await readdir(store, { recursive: true })).sort();
+  const snapshot = await run(dir, "SessionStart", { BOTSPACE_PROFILE: "owner" });
+  assert.doesNotMatch(snapshot, /No usable connection|could not be read|SECRET_|other-team|ignored-stored-alias/);
+  const line = snapshot.split("\n").find(line => line.startsWith("Saved managed connection metadata"));
+  const summary = JSON.parse(line.slice(line.indexOf(": ") + 2));
+  assert.deepEqual(summary, {profile:"owner",managed:[{alias:"project",name:"project-team",runtime:"codex",configured:true,engine:"kanbot"}]});
+  assert.doesNotMatch(JSON.stringify(summary), /running|paused|home|directory|allowFrom|instructions|workspace/);
+  assert.match(snapshot, /Use onboard.*check current status/);
+  assert.equal(await readFile(join(team, "connection.json"), "utf8"), metadata);
+  assert.deepEqual((await readdir(store, { recursive: true })).sort(), before);
+  const all = await run(dir);
+  assert.match(all, /project-team/);assert.match(all, /other-team/);
+  const wrongProfile = await run(dir, "SessionStart", {BOTSPACE_PROFILE:"missing"});
+  assert.match(wrongProfile, /No usable connection/);assert.doesNotMatch(wrongProfile, /project-team|other-team/);
+});
+
+test("managed activation bounds metadata reads and tolerates damaged records", async (t) => {
+  await mkdir(".cache", { recursive: true });
+  const dir = await mkdtemp(resolve(".cache/hooks-managed-bounds-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const profile = join(dir, ".botspace", "managed", "owner");
+  for (const [alias, content] of [["valid",JSON.stringify({name:"valid-team",runtime:"kimi",configured:false})],["broken","{"],["large",JSON.stringify({name:"OVERSIZED",extra:"x".repeat(66000)})]]) {
+    await mkdir(join(profile,alias),{recursive:true});await writeFile(join(profile,alias,"connection.json"),content);
+  }
+  const snapshot = await run(dir);
+  assert.match(snapshot, /valid-team/);assert.match(snapshot, /"configured":false/);
+  assert.doesNotMatch(snapshot, /OVERSIZED|No usable connection/);
+});

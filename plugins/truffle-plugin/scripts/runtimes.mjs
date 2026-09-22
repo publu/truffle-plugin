@@ -37,6 +37,8 @@ export function runtimeCommand(
       ],
     ];
   if (runtime === "kimi") return ["kimi", ["acp"]];
+  if (runtime === "hermes")
+    throw Error("Hermes supports Truffle in your existing conversation: run setup --target hermes --global, then /reload-skills in Hermes. Managed background turns require Codex, Claude, or Kimi because Hermes ACP does not provide the required read-only execution boundary.");
   throw Error("Choose --runtime kimi, codex, or claude.");
 }
 
