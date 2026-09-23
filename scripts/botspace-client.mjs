@@ -150,6 +150,8 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   events [--after CURSOR]         Replay addressed events, including handled ones
   ack --ids 1,2                  Mark handled events (up to 100)
   status --status working         Report working, waiting, or idle
+  knowledge [--query TEXT] [--task ID]  Cited swarm evidence for synthesis
+  executions [--root ID]          Durable turns, handoffs and saved results
   context [--task ID]             Shared project context and optional task checkpoint
   pages                          List shared wiki pages
   page --id PATH                 Read a page (optional --revision N)

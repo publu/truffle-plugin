@@ -221,3 +221,19 @@ test("large context stays valid, bounded and explicit about omitted records", as
   assert.deepEqual(JSON.parse(serialized),JSON.parse(JSON.stringify(bounded)));
   assert.match(prompt,/Resolve conflicting findings from evidence/);
 });
+
+test("existing agents receive relevant cited swarm evidence before executing", async () => {
+  let prompt;
+  await handleJob({ job: job(), state: fresh(), config: cfg, persist: async () => {},
+    api: async (path) => {
+      if (path.startsWith("/threads")) return thread;
+      if (path === "/context") return { capabilities: ["knowledge"] };
+      if (path.startsWith("/knowledge?")) return { sources: [{ id: "wiki:decisions@2", text: "Approved recovery decision", url: "https://example.com/api/w/test/wiki/page?id=decisions&revision=2" }], omitted: 3 };
+    },
+    run: async (options) => { prompt = options.prompt; return { text: "Reviewed the cited decision" }; },
+  });
+  assert.match(prompt, /Approved recovery decision/);
+  assert.match(prompt, /revision=2/);
+  assert.match(prompt, /sourceOmissions":3/);
+  assert.match(prompt, /untrusted/);
+});

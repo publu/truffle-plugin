@@ -12,7 +12,7 @@ import {mkdirSync,readFileSync,writeFileSync,appendFileSync,existsSync,statSync}
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 const args=process.argv.slice(2);
-if(args[0]==='--version'){console.log('kanbot 0.9.6');process.exit(0);}
+if(args[0]==='--version'){console.log('kanbot 0.9.7');process.exit(0);}
 if(args[0]!=='swarm')process.exit(2);
 const home=process.env.KANBOT_HOME;
 mkdirSync(home,{recursive:true});
@@ -61,6 +61,14 @@ async function fixture(t, {engine=true, runtime=true}={}) {
   return {dir,bin,store,project,calls,metadata,run,connect,log};
 }
 function okay(r){assert.equal(r.code,0,r.stderr);return r.json;}
+
+test('managed setup rejects engines older than the supported durable runner',async t=>{
+ const f=await fixture(t);
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.7','kanbot 0.9.6'),{mode:0o700});
+ const result=await f.connect();
+ assert.notEqual(result.code,0);assert.match(result.stderr,/0\.9\.7 or newer/);
+ assert.equal((await f.log()).length,0);
+});
 
 test('managed CLI preserves paused connection and settings; explicit resume owns one runner',async t=>{
  const f=await fixture(t);
@@ -162,7 +170,7 @@ writeFileSync(process.env.FAKE_CALLS,JSON.stringify({args:process.argv.slice(2),
 `,{mode:0o700});
  const result=okay(await f.run(['managed','install']));assert.equal(result.installed,true);assert.equal(result.scope,'private Truffle store');
  const call=JSON.parse(await readFile(f.calls,'utf8'));
- assert.deepEqual(call.args,['tool','install','--force','kanbot==0.9.6']);
+ assert.deepEqual(call.args,['tool','install','--force','kanbot==0.9.7']);
  assert.equal(call.tools,join(f.store,'engines','tools'));assert.equal(call.bin,join(f.store,'engines','bin'));
 });
 

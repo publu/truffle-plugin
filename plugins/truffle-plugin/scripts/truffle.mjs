@@ -315,6 +315,8 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
     ![
       "mcp-config",
       "context",
+      "knowledge",
+      "executions",
       "pages",
       "page",
       "search",
