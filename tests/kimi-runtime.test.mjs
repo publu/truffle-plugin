@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import {runRuntime} from '../plugins/truffle-plugin/scripts/runtimes.mjs';
+import {runRuntime,acpError} from '../plugins/truffle-plugin/scripts/runtimes.mjs';
 
 test('Kimi ACP resumes exact session, ignores replay, rejects write approval in read mode',async()=>{
  await mkdir('.cache',{recursive:true});const dir=resolve(await mkdtemp('.cache/kimi-acp-'));const oldPath=process.env.PATH;
@@ -48,4 +48,13 @@ console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',tex
   const r=await runRuntime({runtime:'codex',directory:dir,mode:'read',prompt:'Test',signal:AbortSignal.timeout(5000)});
   assert.equal(r.text,'BOTSPACE_CONNECTOR CLAUDE_CODE_USE_BEDROCK CLAUDE_CONFIG_DIR');
  } finally {for(const k of Object.keys(process.env))if(!(k in old))delete process.env[k];Object.assign(process.env,old);await rm(dir,{recursive:true,force:true});}
+});
+
+
+test('ACP subscription failures identify account access without exposing provider payloads',()=>{
+ const error=acpError('kimi',{code:-32000,message:'Authentication required: 403 Your current subscription does not have access. Upgrade your plan. token=private-value'});
+ assert.match(error.message,/subscription does not grant access/);
+ assert.ok(!error.message.includes('private-value'));
+ assert.match(acpError('hermes',{message:'Authentication required: invalid token secret'}).message,/authentication was rejected/);
+ assert.ok(!acpError('hermes',{message:'provider dump with secret'}).message.includes('secret'));
 });

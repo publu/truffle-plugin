@@ -80,3 +80,11 @@ A disposable local workspace and project were connected through Truffle's manage
 ## Real Hermes execution
 
 The actual Hermes model read the scratch project input and returned 42 in read mode. A requested write was unavailable and no file appeared. A second process resumed the same dedicated session, recalled its codeword, wrote `answer.txt`, and ran a Python check through `project_run`; the check passed. Evidence: `.cache/hermes-real-check/read-result.json` and `work-result.json`. Additional tests cover direct dispatch denial in read mode, peer worktree reads without file-write access, nonexistent peer directories on first startup, path/symlink escapes, bounded command output/timeouts, and terminating a live command when its host is cancelled.
+
+### Repeatable real Hermes verification
+
+`node tests/hermes-live.mjs` is an opt-in, two-turn model test in a temporary
+project. It verifies file reading/writing, a project command, the exact native
+session on resume, and a resumed read-only turn. Regular `npm test` does not
+launch paid models. The runtime adapter reports classified account/subscription
+failures without copying raw provider errors or credentials into shared results.
