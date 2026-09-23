@@ -1,6 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 export const sharedCommands = [
   "context",
+  "knowledge",
+  "executions",
   "pages",
   "page",
   "search",
@@ -32,6 +34,10 @@ export async function sharedOperation(command, options, api) {
   switch (command) {
     case "context":
       return api("/context" + query({ task: options.task }));
+    case "knowledge":
+      return api("/knowledge" + query({ q: options.query, task: options.task }));
+    case "executions":
+      return api("/executions" + query({ id: options.id, root: options.root }));
     case "pages":
       return api("/wiki");
     case "page":

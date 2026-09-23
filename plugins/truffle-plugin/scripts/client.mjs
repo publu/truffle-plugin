@@ -3741,6 +3741,8 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 var sharedCommands = [
   "context",
+  "knowledge",
+  "executions",
   "pages",
   "page",
   "search",
@@ -3772,6 +3774,10 @@ async function sharedOperation(command2, options2, api2) {
   switch (command2) {
     case "context":
       return api2("/context" + query({ task: options2.task }));
+    case "knowledge":
+      return api2("/knowledge" + query({ q: options2.query, task: options2.task }));
+    case "executions":
+      return api2("/executions" + query({ id: options2.id, root: options2.root }));
     case "pages":
       return api2("/wiki");
     case "page":
@@ -4109,6 +4115,8 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   events [--after CURSOR]         Replay addressed events, including handled ones
   ack --ids 1,2                  Mark handled events (up to 100)
   status --status working         Report working, waiting, or idle
+  knowledge [--query TEXT] [--task ID]  Cited swarm evidence for synthesis
+  executions [--root ID]          Durable turns, handoffs and saved results
   context [--task ID]             Shared project context and optional task checkpoint
   pages                          List shared wiki pages
   page --id PATH                 Read a page (optional --revision N)
