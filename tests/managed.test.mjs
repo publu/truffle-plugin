@@ -62,6 +62,14 @@ async function fixture(t, {engine=true, runtime=true}={}) {
 }
 function okay(r){assert.equal(r.code,0,r.stderr);return r.json;}
 
+test('managed setup rejects engines older than the supported Hermes runner',async t=>{
+ const f=await fixture(t);
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.6','kanbot 0.9.5'),{mode:0o700});
+ const result=await f.connect();
+ assert.notEqual(result.code,0);assert.match(result.stderr,/0\.9\.6 or newer/);
+ assert.equal((await f.log()).length,0);
+});
+
 test('managed CLI preserves paused connection and settings; explicit resume owns one runner',async t=>{
  const f=await fixture(t);
  assert.equal(okay(await f.connect()).service.running,true);

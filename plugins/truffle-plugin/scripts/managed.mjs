@@ -165,7 +165,7 @@ async function engine(base) {
     !version ||
     (Number(version[1]) === 0 &&
       (Number(version[2]) < 9 ||
-        (Number(version[2]) === 9 && Number(version[3]) < 5)))
+        (Number(version[2]) === 9 && Number(version[3]) < 6)))
   )
     throw Error(
       "Managed agents need Kanbot 0.9.6 or newer. Run `truffle managed install` to install the supported runner privately.",
