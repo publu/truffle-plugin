@@ -14,7 +14,7 @@ import { resolve, join, delimiter, relative, sep } from "node:path";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
-const engineVersion = "0.9.6";
+const engineVersion = "0.9.7";
 const runtimes = ["codex", "claude", "kimi", "hermes"];
 const aliasPattern = /^[a-z][a-z0-9-]{1,39}$/;
 const root = (base, profile) => join(base, "managed", profile);
@@ -165,10 +165,10 @@ async function engine(base) {
     !version ||
     (Number(version[1]) === 0 &&
       (Number(version[2]) < 9 ||
-        (Number(version[2]) === 9 && Number(version[3]) < 6)))
+        (Number(version[2]) === 9 && Number(version[3]) < 7)))
   )
     throw Error(
-      "Managed agents need Kanbot 0.9.6 or newer. Run `truffle managed install` to install the supported runner privately.",
+      "Managed agents need Kanbot 0.9.7 or newer. Run `truffle managed install` to install the supported runner privately.",
     );
   return binary;
 }
