@@ -237,3 +237,22 @@ test("existing agents receive relevant cited swarm evidence before executing", a
   assert.match(prompt, /sourceOmissions":3/);
   assert.match(prompt, /untrusted/);
 });
+
+
+test("ongoing-work guidance reaches a connector turn while user scope and context remain intact", async () => {
+  const { promptFor } = await import('../plugins/truffle-plugin/scripts/connector.mjs');
+  const instructions = "Maintain my report. Another swarm is a reference, not an editing target.";
+  for (const mode of ["read", "work"]) {
+    const prompt = promptFor({thread, event:job().event, name:"worker", mode, instructions, context:{}});
+    assert.ok(prompt.includes(instructions));
+    assert.match(prompt,/explicitly ongoing mission/);
+    assert.match(prompt,/current, reviewable result/);
+    assert.match(prompt,/does not pause unrelated authorized work/);
+    assert.match(prompt,/explicit pause instructions, required approvals and configured budgets/);
+    assert.match(prompt,/Product or tooling feedback does not authorize/);
+    assert.match(prompt,/In read-only mode return this update for the owner to apply/);
+    assert.match(prompt,/Never start another listener or agent/);
+    assert.match(prompt,/one-off request/);
+    if (mode === "read") assert.match(prompt,/do not edit files or run commands that change state/);
+  }
+});
