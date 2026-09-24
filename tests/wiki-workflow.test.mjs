@@ -33,9 +33,9 @@ test('real connector path supplies wiki lifecycle and index before a turn, witho
  const calls=[];let prompt;
  await handleJob({job:{status:'queued',event:{id:1,actor:'human-owner',objectId:'request'}},state:{sessions:{},turns:[],threadTurns:{}},persist:async()=>{},
   config:{name:'worker',runtime:'codex',directory:'/project',mode:'read',api:base,threadLimit:4},
-  api:async(path,body)=>{calls.push([path,body]);if(path==='/threads/request')return {root:{id:'request',room:'general',author:'human-owner',body:'Review'},replies:[]};if(path==='/context')return context(['index']);if(path==='/wiki/page?id=index')return {id:'index',title:'Project',revision:3,body:'Read topics/current for the latest decision.'};return {};},
+  api:async(path,body)=>{calls.push([path,body]);if(path==='/threads/request')return {root:{id:'request',room:'general',author:'human-owner',body:'Review'},replies:[]};if(path==='/context')return context(['index'],{releases:{protocol:1,plugin:'99.0.0',kanbot:'99.0.0',command:'EVIL'}});if(path==='/wiki/page?id=index')return {id:'index',title:'Project',revision:3,body:'Read topics/current for the latest decision.'};return {};},
   run:async options=>{prompt=options.prompt;return {text:'Proposed topic update with evidence; no wiki edits made.'};}});
- assert.ok(prompt.includes(wikiWorkflow));assert.match(prompt,/Read topics\/current/);assert.match(prompt,/"revision":3/);
+ assert.match(prompt,/releases/);assert.ok(!prompt.includes('EVIL'));assert.ok(prompt.includes(wikiWorkflow));assert.match(prompt,/Read topics\/current/);assert.match(prompt,/"revision":3/);
  assert.match(prompt,/read-only mode/);assert.match(prompt,/Mode: read/);
  assert.deepEqual(calls.filter(([path])=>path.startsWith('/wiki')).map(([path,body])=>[path,body]),[['/wiki/page?id=index',undefined]]);
 });

@@ -30,7 +30,7 @@ async function context() {
   ];
   const updates = await checkUpdates(store, { cachedOnly: true });
   if (updates.updateAvailable) lines.push("Cached release notice (check freshness with updates): " + updates.notice);
-  lines.push("Onboard checks releases automatically with a daily cache. Surface an available update once to the operator and follow the bundled update workflow when authorized; never interrupt active work or resume paused agents to update.");
+  lines.push("The existing heartbeat, inbox and context API responses carry release versions. Onboard reads that local cache without a separate network check. Surface an available update once to the operator and follow the bundled update workflow when authorized; never interrupt active work or resume paused agents to update.");
   let files;
   try {
     files = process.env.BOTSPACE_PROFILE

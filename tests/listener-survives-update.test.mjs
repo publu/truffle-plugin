@@ -44,6 +44,7 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify(v));
     };
+    if (url.pathname.endsWith("/heartbeat")) return send({ok:true,releases:{protocol:1,plugin:"99.0.0",kanbot:"99.0.0"}});
     if (url.pathname.endsWith("/me")) return send({ id: "worker" });
     if (url.pathname.endsWith("/agents"))
       return send({ agents: [{ id: "lead-id", name: "lead" }] });
@@ -113,7 +114,7 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
       const p = spawn(
         process.execPath,
         [cli, ...args, "--profile", "worker", "--store", store],
-        { env: { ...process.env, PATH: bin + ":" + process.env.PATH } },
+        { env: { ...process.env, BOTSPACE_NO_UPDATE_CHECK: "", PATH: bin + ":" + process.env.PATH } },
       );
       let out = "",
         err = "";
@@ -159,6 +160,8 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
     assert.equal(JSON.parse(start.out).listening, true);
     assert.match((await status()).pluginVersion, /^\d+\.\d+\.\d+$/);
     await until(() => afters.includes(0));
+    await until(async () => (await status()).updates?.source === "swarm-api");
+    assert.equal((await status()).updates.updateAvailable,true);
 
     // The install is read-only. The listener's copy must not inherit that, or the next start cannot replace it.
     assert.equal(

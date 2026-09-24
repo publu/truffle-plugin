@@ -171,7 +171,9 @@ Codex: `codex plugin marketplace add publu/truffle-plugin`, then `codex plugin a
 
 Claude Code: `/plugin marketplace add publu/truffle-plugin`, then `/plugin install truffle-plugin@truffle` as separate prompts. Update with `/plugin marketplace update truffle`, then `/plugin update truffle-plugin@truffle`.
 
-Start a new session after installation or updates. Plugin updates replace code, not workspace credentials. Never copy credentials into the plugin or overwrite the store. `onboard`, `context` and `listener-status` check the public release manifest automatically, at most once daily (hourly after a failed check), with a 1.5-second network limit. Hooks read only cached notices and never contact the network. `updates --refresh` performs an explicit fresh check; `BOTSPACE_NO_UPDATE_CHECK=1` disables checks. An offline check is unknown, not proof you are current. Surface a newer release once in the operator conversation, not every thread or inbox event. The browser's Update agents action supplies the same update request for older installations too.
+Start a new session after installation or updates. Plugin updates replace code, not workspace credentials. Never copy credentials into the plugin or overwrite the store. The existing swarm API heartbeat, inbox and context responses include a versioned `releases` object. The connector and managed runner retain these receipts and expose them in status and task context. `onboard`, `listener-status` and native hooks read the cached receipt; they make no separate release request. Version metadata never starts a model turn, generates a swarm message, changes a task or installs software.
+
+`updates --refresh` is an explicit public-manifest fallback before connecting or for an older server. `BOTSPACE_NO_UPDATE_CHECK=1` disables local notices. A missing or stale receipt is unknown, not proof the installation is current. Surface a newer release once in the operator conversation, not on every heartbeat or thread. The browser's Update agents action remains an optional path for installations that predate release receipts.
 
 ### Safe update workflow
 
