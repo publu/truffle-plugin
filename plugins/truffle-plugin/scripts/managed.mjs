@@ -14,7 +14,7 @@ import { resolve, join, delimiter, relative, sep } from "node:path";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
-const engineVersion = "0.9.9";
+import { engineVersion, newer } from "./updates.mjs";
 const runtimes = ["codex", "claude", "kimi", "hermes"];
 const aliasPattern = /^[a-z][a-z0-9-]{1,39}$/;
 const root = (base, profile) => join(base, "managed", profile);
@@ -140,7 +140,7 @@ function processRun(binary, args, env = {}, timeout = 35000) {
     );
   });
 }
-async function engine(base) {
+async function engine(base, details = false) {
   if (process.platform === "win32")
     throw Error(
       "Managed agents require macOS, Linux, or WSL. Existing-session connections still work on Windows.",
@@ -163,14 +163,12 @@ async function engine(base) {
   );
   if (
     !version ||
-    (Number(version[1]) === 0 &&
-      (Number(version[2]) < 9 ||
-        (Number(version[2]) === 9 && Number(version[3]) < 8)))
+    (!details && newer(engineVersion, version.slice(1).join(".")))
   )
     throw Error(
-      "Managed agents need Kanbot 0.9.9 or newer. Run `truffle managed install` to install the supported runner privately.",
+      `Managed agents need Kanbot ${engineVersion} or newer. Run truffle managed install to install the supported runner privately.`,
     );
-  return binary;
+  return details ? { binary, version: version.slice(1).join("."), updateAvailable: newer(engineVersion, version.slice(1).join(".")) } : binary;
 }
 function clean(result) {
   if (Array.isArray(result)) return result.map(clean);
@@ -183,7 +181,9 @@ function clean(result) {
   return result;
 }
 async function invoke(base, connection, args) {
-  const output = await processRun(await engine(base), ["swarm", ...args], {
+  // Older engines must remain inspectable and stoppable during an update.
+  const binary = ["status", "pause"].includes(args[0]) ? (await engine(base, true)).binary : await engine(base);
+  const output = await processRun(binary, ["swarm", ...args], {
     KANBOT_HOME: connection.home,
   });
   try {
@@ -303,6 +303,29 @@ export async function managed({
     };
   if (command === "install") {
     allowed(opts, []);
+    let installed;
+    try { installed = await engine(base, true); } catch { /* Missing engine can be installed privately. */ }
+    if (installed && !installed.updateAvailable)
+      return { installed: true, reused: true, engine: "kanbot", version: installed.version,
+        scope: "existing installation", next: "The engine already meets the supported version; no reinstall or downgrade was performed." };
+    {
+      await ownedPath(base, join(base, "managed"));
+      // One private engine serves every managed profile in this store. Refuse
+      // replacement while any affected team is running or cannot be inspected.
+      let profiles = [];
+      try { profiles = await readdir(join(base, "managed"), { withFileTypes: true }); }
+      catch (e) { if (e.code !== "ENOENT") throw e; }
+      for (const profileEntry of profiles) {
+        if (!profileEntry.isDirectory() || !/^[a-z0-9][a-z0-9_-]{0,39}$/.test(profileEntry.name)) continue;
+        for (const team of await managedConnections(base, profileEntry.name)) {
+          if (!team.configured) continue;
+          const status = await managedStatus(base, team);
+          if (status.available === false || status.running || status.active > 0 ||
+              Object.entries(status.jobs || {}).some(([state, count]) => count > 0 && ["queued", "running", "delivering", "remote_sending", "uncertain"].includes(state)))
+            throw Error("Managed update deferred: an affected team is running, has pending work, or cannot be inspected. Finish or reconcile its work, then pause only authorized teams before updating. Saved settings are unchanged.");
+        }
+      }
+    }
     if (process.platform === "win32")
       throw Error(
         "Use WSL for managed agents. Existing-session connections work on Windows.",
@@ -341,10 +364,14 @@ export async function managed({
       })),
     );
     try {
+      const installed = await engine(base, true);
       return {
-        engine: await engine(base),
+        engine: installed.binary,
+        installedVersion: installed.version,
+        supportedVersion: engineVersion,
+        updateAvailable: installed.updateAvailable,
         runtimes: available,
-        ready: available.some((r) => r.installed),
+        ready: !installed.updateAvailable && available.some((r) => r.installed),
         note: "Runtime login and task execution are verified by the actual task, not by binary presence.",
       };
     } catch (e) {

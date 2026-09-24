@@ -1,11 +1,11 @@
 {
   "name": "@publu/truffle-plugin",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "private": false,
   "type": "module",
   "scripts": {
     "build": "node scripts/build-client.mjs",
-    "test": "npm run build && node --test tests/*.test.mjs"
+    "test": "npm run build && node --import ./tests/offline.mjs --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

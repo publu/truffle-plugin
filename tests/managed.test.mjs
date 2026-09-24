@@ -64,9 +64,11 @@ function okay(r){assert.equal(r.code,0,r.stderr);return r.json;}
 
 test('managed setup rejects engines older than the supported durable runner',async t=>{
  const f=await fixture(t);
- await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.9','kanbot 0.9.7'),{mode:0o700});
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.9','kanbot 0.9.8'),{mode:0o700});
  const result=await f.connect();
  assert.notEqual(result.code,0);assert.match(result.stderr,/0\.9\.9 or newer/);
+ const doctor=okay(await f.run(['managed','doctor']));
+ assert.equal(doctor.installedVersion,'0.9.8');assert.equal(doctor.supportedVersion,'0.9.9');assert.equal(doctor.updateAvailable,true);assert.equal(doctor.ready,false);
  assert.equal((await f.log()).length,0);
 });
 
@@ -172,6 +174,24 @@ writeFileSync(process.env.FAKE_CALLS,JSON.stringify({args:process.argv.slice(2),
  const call=JSON.parse(await readFile(f.calls,'utf8'));
  assert.deepEqual(call.args,['tool','install','--force','kanbot==0.9.9']);
  assert.equal(call.tools,join(f.store,'engines','tools'));assert.equal(call.bin,join(f.store,'engines','bin'));
+});
+
+test('managed updates inspect older running teams and defer replacement without stopping them', async t => {
+ const f=await fixture(t);okay(await f.connect());
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.9','kanbot 0.9.8'),{mode:0o700});
+ assert.equal(okay(await f.run(['managed','status','--workspace','demo'])).running,true);
+ const result=await f.run(['managed','install']);
+ assert.notEqual(result.code,0);assert.match(result.stderr,/update deferred/);
+ assert.equal((await f.log()).filter(c=>c.command==='pause').length,0);
+ assert.equal(okay(await f.run(['managed','pause','--workspace','demo'])).paused,true);
+});
+
+test('managed install reuses a newer engine without downgrading or starting workers', async t => {
+ const f=await fixture(t);
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.9','kanbot 0.10.0'),{mode:0o700});
+ const result=okay(await f.run(['managed','install']));
+ assert.equal(result.reused,true);assert.equal(result.version,'0.10.0');
+ assert.deepEqual(await f.log(),[]);
 });
 
 test('managed subprocess errors redact invitation URLs and bearer credentials',async t=>{

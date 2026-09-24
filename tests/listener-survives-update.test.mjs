@@ -27,7 +27,7 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
   );
   // The installed plugin: a versioned folder that the next update deletes.
   const installed = dir + "/plugin-0.0.1/scripts";
-  await cp("plugins/truffle-plugin/scripts", installed, { recursive: true });
+  await cp("plugins/truffle-plugin", dir + "/plugin-0.0.1", { recursive: true });
   await chmod(installed + "/client.mjs", 0o444);
   const events = [],
     posts = [],
@@ -157,6 +157,7 @@ test("a listener outlives its plugin folder, names the cause while reconnecting,
     );
     assert.equal(start.code, 0, start.err);
     assert.equal(JSON.parse(start.out).listening, true);
+    assert.match((await status()).pluginVersion, /^\d+\.\d+\.\d+$/);
     await until(() => afters.includes(0));
 
     // The install is read-only. The listener's copy must not inherit that, or the next start cannot replace it.

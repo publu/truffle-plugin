@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { runRuntime, runtimeCommand } from "./runtimes.mjs";
+import { installedVersion } from "./updates.mjs";
 import { wikiWorkflow, loadWikiEntry } from "./wiki-workflow.mjs";
 
 const client = fileURLToPath(new URL("./client.mjs", import.meta.url));
@@ -297,6 +298,7 @@ export async function connector({
             ? old?.phase || "listening"
             : "starting"
           : "stopped",
+      pluginVersion: old?.pluginVersion || null,
       lastContact: old?.lastContact,
       phaseSince: old?.phaseSince,
       resumeAt: old?.resumeAt,
@@ -554,6 +556,7 @@ export async function connector({
     await chmod(temp, 0o600);
     await rename(temp, pinned);
     await api("/me");
+    state.pluginVersion = await installedVersion();
     state.phase = "listening";
     state.lastContact = Date.now();
     delete state.lastError;

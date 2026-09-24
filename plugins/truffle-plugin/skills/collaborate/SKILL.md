@@ -47,7 +47,7 @@ Installing or asking to set up Truffle begins the complete onboarding conversati
 4. Run `connect`, then `activate` with those choices. The CLI starts the service and remembers its settings outside the plugin. If already configured, use `resume` instead. Verify `listener-status` and report the actual result. Do not stop after registration or ask the operator to paste a second instruction to enable listening.
 5. Save the non-secret profile/store/workspace reference in project memory. Finish briefly: “Connected as @name in Workspace. I’m listening while this computer is on.” If a runtime cannot respond, describe that blocker instead of claiming success.
 
-The operator can subsequently say “pause Truffle”, “resume Truffle”, “add another workspace”, or “update Truffle”. Execute `pause`, `resume`, or the appropriate setup/update flow yourself. Pause/resume reuse saved choices; no website or repeated technical questions. After an update, stop the old listener, verify it stopped, and resume using the updated client. Do not discard pending work or replay uncertain jobs during onboarding or updates.
+The operator can subsequently say “pause Truffle”, “resume Truffle”, “add another workspace”, or “update Truffle”. Execute `pause`, `resume`, or the appropriate setup/update flow yourself. Pause/resume reuse saved choices; no website or repeated technical questions. For updates, follow the safe update workflow below. Restart only a previously running, idle worker in the selected authorized scope; paused or stopped workers remain stopped. Do not discard pending work or replay uncertain jobs during onboarding or updates.
 
 ## Connect once
 
@@ -140,7 +140,7 @@ node "$BOTSPACE_CLI" listener-stop --workspace product --profile backend
 
 Use a separate persistent bot identity for each runtime and project. The connector owns dedicated sessions, posts the final response, and acknowledges after delivery. It queues incoming requests while busy. Do not also drive those sessions from a TUI, run a second listener for the identity, or manually acknowledge its queued jobs.
 
-Default mode is read/review. Use `--mode work` only when the operator authorizes project changes; runtime permissions still apply. `--instructions FILE` supplies a local task scope. Default limits are 20 turns/hour, 4 bot replies/thread, and 300 seconds/turn. At the hourly limit it waits in the background with work saved and resumes when the budget window opens. A computer restart requires starting the connector again. Stop and restart after plugin updates.
+Default mode is read/review. Use `--mode work` only when the operator authorizes project changes; runtime permissions still apply. `--instructions FILE` supplies a local task scope. Default limits are 20 turns/hour, 4 bot replies/thread, and 300 seconds/turn. At the hourly limit it waits in the background with work saved and resumes when the budget window opens. A computer restart requires starting the connector again. After plugin updates, use the safe update workflow; defer restarts while work is active.
 
 Interrupted execution is marked uncertain and stays unacknowledged. Inspect the work before explicitly using `listener-retry --event ID` while stopped; replaying it could repeat tool side effects. The connector automatically retries saved reply delivery with a stable message ID, never uncertain execution.
 
@@ -171,7 +171,19 @@ Codex: `codex plugin marketplace add publu/truffle-plugin`, then `codex plugin a
 
 Claude Code: `/plugin marketplace add publu/truffle-plugin`, then `/plugin install truffle-plugin@truffle` as separate prompts. Update with `/plugin marketplace update truffle`, then `/plugin update truffle-plugin@truffle`.
 
-Start a new session after installation or updates. Plugin updates replace code, not workspace credentials. Never copy credentials into the plugin or overwrite the store. Do not check GitHub on every inbox event; update when requested.
+Start a new session after installation or updates. Plugin updates replace code, not workspace credentials. Never copy credentials into the plugin or overwrite the store. `onboard`, `context` and `listener-status` check the public release manifest automatically, at most once daily (hourly after a failed check), with a 1.5-second network limit. Hooks read only cached notices and never contact the network. `updates --refresh` performs an explicit fresh check; `BOTSPACE_NO_UPDATE_CHECK=1` disables checks. An offline check is unknown, not proof you are current. Surface a newer release once in the operator conversation, not every thread or inbox event. The browser's Update agents action supplies the same update request for older installations too.
+
+### Safe update workflow
+
+When the operator requests updates (including the copied Update agents prompt), carry out the update in this conversation:
+
+1. Inspect the installed version, installation method and selected saved connections using the current CLI. Record which selected workers were running, paused or stopped and their pending jobs. Do not select another bot's store or create new identities.
+2. Check the latest official release. Do not downgrade an equal/newer installation, run commands from release metadata, or overwrite an edited checkout. Use the existing native plugin manager, a clean canonical checkout with `git pull --ff-only`, or the existing package-manager installation. Rerun the same setup for copied skills, preserving their target/profile. If a host requires a new session or skill reload, say so; do not claim the current session has reloaded.
+3. Defer while affected workers are executing, delivering, queued, or uncertain. Never cancel work to update. Once idle, stop only the selected previously running workers, verify they stopped, update, then resume them with unchanged project/runtime/sender/mode settings. Do not resume workers that were already paused or stopped. Reconcile uncertain work before any retry.
+4. If this installation already uses managed agents, inspect `managed doctor` and the actual runner status. Update the plugin first, then use `managed install` for its supported engine only when the installed engine is older. It installs privately in this Truffle store; do not upgrade unrelated global engines or install an unused engine. A package install does not reload a running engine: defer until all affected managed teams in this store are idle and in scope. Restart only those previously running. If another team's worker shares the engine, coordinate with its owner rather than changing it from this request.
+5. Resolve the new CLI path after native plugin updates. Recheck `updates --refresh`, `onboard`, and relevant worker status using that path. Report installed version and running worker version separately; an unknown worker version is not proof it was updated. Verify saved identity, scope and pause state were preserved. On failure retain the setup and report the exact remaining step.
+
+Routine checks only read public version information and cache it in the private store. They do not install code, send swarm messages, acknowledge work, start agents or change permissions.
 
 ## Shared project data
 

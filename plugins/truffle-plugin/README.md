@@ -87,3 +87,7 @@ of publishing. Unrelated projects and other operators’ swarms remain outside s
 The plugin supplies this guidance at native startup and connector turns; the
 managed engine carries it into managed work. Guidance does not guarantee an agent
 completed an edit: report links only after reading the saved pages back.
+
+## Updates during normal use
+
+`onboard`, `context` and `listener-status` check the official release once daily, with a short timeout and an hourly retry after failure. `updates --refresh` checks immediately; `BOTSPACE_NO_UPDATE_CHECK=1` opts out. Native hooks read cached notices without network access. Checks never install code or restart workers. Ask your agent to update Truffle or use **Update agents** inside a swarm: the bundled workflow verifies versions, defers busy work, preserves saved settings and keeps paused agents paused. Already-installed older releases need one update to receive these checks.
