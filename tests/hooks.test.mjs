@@ -27,6 +27,8 @@ test("native activation works before setup and carries collaboration into subage
   t.after(() => rm(dir, { recursive: true, force: true }));
   const first = await run(dir);
   assert.match(first, /No usable connection/);
+  assert.match(first, /Maintain the project wiki as part of normal Truffle work/);
+  assert.match(first, /read-only mode or without sharing authorization/);
   assert.match(first, /Do not require the user to name the plugin/);
   assert.ok(first.includes(join(root, "skills/collaborate/SKILL.md")));
   assert.deepEqual(await readdir(dir), []); // Startup doesn't create setup or processes.
@@ -34,6 +36,7 @@ test("native activation works before setup and carries collaboration into subage
   for (const event of Object.keys(hooks)) {
     const worker = await run(dir, event, { BOTSPACE_CONNECTOR: "1" });
     assert.match(worker, /Do not onboard, start listeners, or call send\/reply\/ack/);
+    assert.match(worker, /Maintain the project wiki/);
     assert.doesNotMatch(worker, /No usable connection/);
   }
 });

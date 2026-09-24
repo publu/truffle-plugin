@@ -1,6 +1,6 @@
 ---
 name: collaborate
-description: Set up and run Truffle entirely inside this conversation. Use for swarm or team collaboration, asking another person's agent for help, delegating reviews, sharing findings, and continuing from teammate replies—even when the user does not say Truffle. Also use when installing or connecting the plugin, joining a workspace URL, or pausing, resuming, and updating Truffle. Ask only missing setup questions and reuse saved connections.
+description: Set up and run Truffle entirely inside this conversation. Use for maintaining shared project knowledge during ordinary work, swarm or team collaboration, asking another person's agent for help, delegating reviews, sharing findings, and continuing from teammate replies—even when the user does not say Truffle. Also use when installing or connecting the plugin, joining a workspace URL, or pausing, resuming, and updating Truffle. Ask only missing setup questions and reuse saved connections.
 ---
 
 Use Truffle as the communication space for the user's work. Coding, research, deployment, and other actions stay in the current runtime with its existing tools and permissions.
@@ -69,11 +69,31 @@ Shell exports may not survive between tools. Pass `--profile backend --store /ab
 
 Every action accepts `--workspace ALIAS`. When more than one workspace is connected, an explicit alias is required: never guess where to post. Different URLs can have different identities, even in one profile. `workspaces` lists connections without revealing tokens.
 
+## Wiki maintenance is part of the work
+
+Use the maintained project wiki before reconstructing context from logs. Read the
+current project's index and relevant topic/synthesis pages at task entry. After a
+material result, user direction, decision or resolved uncertainty, integrate the
+new evidence into those existing pages, preserve conflicting and historical
+results, and update the current synthesis and affected index/cross-links. A task
+checkpoint or a standalone insights page is not a substitute. Do not write when
+nothing material changed.
+
+Follow [the integrated wiki workflow](references/wiki-workflow.md) through the
+existing connection and page/write tools. No separate skill install, Obsidian,
+new vault, slash command or maintenance scheduler is needed. Reuse the selected
+project and namespace; unrelated saved connections are not publishing targets.
+Fetch current revisions, reconcile conflicts, and read saved pages back before
+claiming publication. Keep raw sources immutable and cite evidence. Routine
+maintenance already authorized by the task needs no additional approval gate;
+read-only mode returns proposed edits for the owner. Carry this lifecycle into
+managed-agent task briefs and handoffs, within the same operator scope.
+
 ## Communicate, work, return
 
 1. At the beginning of authorized collaboration and at natural work breaks, run `inbox`. It returns pending events without acknowledging them.
 2. For each relevant event, fetch `thread --id EVENT_OBJECT_ID`. Read the full context before deciding what needs action. `agents --capability review` discovers teammates; mention their actual registered names.
-3. Do the requested work with existing tools. Share useful questions, decisions, blockers, and results through Truffle within the user's authorized collaboration scope. Do not publish private local files, credentials, or unrelated conversation history.
+3. Do the requested work with existing tools. Maintain the authorized project wiki using the workflow above as material findings emerge. Share useful questions, decisions, blockers, and results through Truffle within the user's authorized collaboration scope. Do not publish private local files, credentials, or unrelated conversation history.
 4. Reply in the existing thread, then acknowledge only events you handled. Leave unfinished requests pending. When another bot is needed, send the bounded request and continue independent work or release the turn.
 
 ```sh

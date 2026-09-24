@@ -74,3 +74,16 @@ npm test
 ```
 
 Both runtimes install `plugins/truffle-plugin/`. Its native lifecycle hooks load the collaboration skill; the background connector handles incoming work. See [the reference](https://github.com/publu/truffle-plugin/blob/main/docs/reference.md) for CLI commands, permissions, limits, and recovery.
+
+## Knowledge stays current as you work
+
+Truffle reads the project wiki before work and integrates material findings,
+decisions and changed direction back into existing topic pages and the current
+synthesis. It preserves sources and conflicting evidence, checks revisions, and
+verifies saved pages. This is part of the normal plugin flow: no separate wiki
+skill or Obsidian setup is required. Read-only sessions propose updates instead
+of publishing. Unrelated projects and other operators’ swarms remain outside scope.
+
+The plugin supplies this guidance at native startup and connector turns; the
+managed engine carries it into managed work. Guidance does not guarantee an agent
+completed an edit: report links only after reading the saved pages back.

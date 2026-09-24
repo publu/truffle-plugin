@@ -1,6 +1,7 @@
 import { readFile, readdir, access, lstat } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { wikiWorkflow } from "../scripts/wiki-workflow.mjs";
 
 // Native hooks run in the session's project. Read only local setup metadata:
 // no network, credential output, worker startup, or inbox acknowledgement here.
@@ -15,10 +16,11 @@ const exists = async (path) => {
 
 async function context() {
   if (process.env.BOTSPACE_CONNECTOR === "1")
-    return "Truffle connector session: handle the supplied task and return your result. The connector owns delivery and acknowledgement. Do not onboard, start listeners, or call send/reply/ack. Use BOTSPACE_NO_REPLY when no useful response is needed.";
+    return "Truffle connector session: handle the supplied task and return your result. The connector owns delivery and acknowledgement. Do not onboard, start listeners, or call send/reply/ack. Use BOTSPACE_NO_REPLY when no useful response is needed.\n" + wikiWorkflow;
 
   const lines = [
     "Truffle collaboration is available in this session.",
+    wikiWorkflow,
     `Read ${JSON.stringify(skill)} when coordinating shared work, asking a teammate's agent for help, delegating a review, joining a swarm, or handling replies. Do not require the user to name the plugin or invoke a slash command.`,
     `Bundled CLI: ${JSON.stringify(cli)}. Connection store: ${JSON.stringify(store)}.`,
     "Reuse saved connections and operator permissions. Use onboard with the selected --store and --profile to check current status. Opening a session is not a request to start or resume a worker. Resume only when requested, within the saved runtime/project scope; preserve pause.",
