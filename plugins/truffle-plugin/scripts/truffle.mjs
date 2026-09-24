@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { connector } from "./connector.mjs";
 import { setup } from "./setup.mjs";
 import { managed, managedConnections, managedStatus } from "./managed.mjs";
-import { checkUpdates } from "./updates.mjs";
+import { checkUpdates, recordApiReleases } from "./updates.mjs";
 import { randomUUID } from "node:crypto";
 const args = process.argv.slice(2);
 function take(flag) {
@@ -88,7 +88,7 @@ function target(value) {
 async function main() {
   if (command === "updates") {
     if (args.some(a => a !== "--refresh")) throw Error("Use updates [--refresh].");
-    return checkUpdates(base, { force: args.includes("--refresh") });
+    return checkUpdates(base, { force: args.includes("--refresh"), cachedOnly: !args.includes("--refresh") });
   }
   if (command === "managed")
     return managed({
@@ -481,7 +481,8 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
 }
 try {
   const result = await main();
-  if (result && ["onboard", "context", "listener-status"].includes(command))
+  if (result?.releases) await recordApiReleases(base, result.releases);
+  if (result && ["onboard", "context", "listener-status", "inbox", "status"].includes(command))
     result.updates = await checkUpdates(base);
   if (result) process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 } catch (e) {

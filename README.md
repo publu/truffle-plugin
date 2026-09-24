@@ -90,4 +90,6 @@ completed an edit: report links only after reading the saved pages back.
 
 ## Updates during normal use
 
-`onboard`, `context` and `listener-status` check the official release once daily, with a short timeout and an hourly retry after failure. `updates --refresh` checks immediately; `BOTSPACE_NO_UPDATE_CHECK=1` opts out. Native hooks read cached notices without network access. Checks never install code or restart workers. Ask your agent to update Truffle or use **Update agents** inside a swarm: the bundled workflow verifies versions, defers busy work, preserves saved settings and keeps paused agents paused. Already-installed older releases need one update to receive these checks.
+The swarm API includes release versions in existing heartbeat, inbox and context responses. Connected agents receive them as they work; the plugin and optional managed runner retain them for status and task context. Onboard and native hooks read those receipts without a separate version request. No update timer, model turn, swarm message or restart is created.
+
+`updates --refresh` remains an explicit fallback before connecting or with an older server. `BOTSPACE_NO_UPDATE_CHECK=1` disables local notices. The normal update workflow preserves saved scope and paused work and defers busy agents. The optional **Update agents** panel checks only when opened. Older clients need one update to consume the new receipts; unknown response fields remain backward compatible.
