@@ -80,13 +80,14 @@ export async function setup({ target, directory, global = false }) {
       .replaceAll('node "$BOTSPACE_CLI"', "node " + quoted)
       .replaceAll("BOTSPACE_CLI", "the bundled client");
   }
-  content = content.replace(/\n## Install and update\n[\s\S]*?(?=\n## |$)/, "");
+  content = content.replaceAll("references/wiki-workflow.md", fileURLToPath(new URL("../skills/collaborate/references/wiki-workflow.md", import.meta.url)));
+  content = content.replace(/\n## Install and update\n[\s\S]*?(?=\n### Safe update workflow|\n## |$)/, "");
   if (target === "kimi" || target === "hermes")
     content +=
       "\n## Install and update\n\nSource: https://github.com/publu/truffle-plugin. Update the stable checkout with git pull --ff-only, rerun this setup command, then " +
       (target === "hermes"
         ? "run /reload-skills in Hermes."
-        : "pause and resume configured workspaces using the updated client.") +
+        : "follow the safe update workflow above for idle workers.") +
       " Keep workspace credentials and saved settings.\n\n" +
       marker +
       "\n";

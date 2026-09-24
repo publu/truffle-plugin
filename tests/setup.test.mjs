@@ -32,6 +32,6 @@ test('Kimi setup uses the same skill and stable bundled client, without an npm r
  await setup({target:'kimi',directory:base});
  const content=await readFile(join(base,'.agents','skills','botspace','SKILL.md'),'utf8');
  assert.match(content,/First-run conversation/);assert.match(content,/scripts\/botspace.mjs/);
- assert.ok(!content.includes('BOTSPACE_CLI'));assert.ok(!content.includes('npm install'));
+ assert.ok(!content.includes('BOTSPACE_CLI'));assert.ok(!content.includes('npm install'));assert.ok(content.includes('Safe update workflow'));assert.ok(content.includes('Defer while affected workers'));assert.ok(content.includes('references/wiki-workflow.md'));
  assert.match(content,/activate/);assert.equal((await setup({target:'kimi',directory:base})).updated,true);
 });

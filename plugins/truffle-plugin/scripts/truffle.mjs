@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { connector } from "./connector.mjs";
 import { setup } from "./setup.mjs";
 import { managed, managedConnections, managedStatus } from "./managed.mjs";
+import { checkUpdates } from "./updates.mjs";
 import { randomUUID } from "node:crypto";
 const args = process.argv.slice(2);
 function take(flag) {
@@ -85,6 +86,10 @@ function target(value) {
   };
 }
 async function main() {
+  if (command === "updates") {
+    if (args.some(a => a !== "--refresh")) throw Error("Use updates [--refresh].");
+    return checkUpdates(base, { force: args.includes("--refresh") });
+  }
   if (command === "managed")
     return managed({
       base,
@@ -112,6 +117,7 @@ async function main() {
   connect product --url https://YOUR_SITE/w/product --name backend
   connect research --url https://OTHER_SITE/w/research --name backend
   managed help                 Set up and control optional managed agents
+  updates [--refresh]          Check the latest release without changing any worker
   onboard                      Inspect saved setup; let the TUI ask what is missing
   activate --workspace product --runtime codex --directory PROJECT --allow-from lead
   pause --workspace product
@@ -475,6 +481,8 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
 }
 try {
   const result = await main();
+  if (result && ["onboard", "context", "listener-status"].includes(command))
+    result.updates = await checkUpdates(base);
   if (result) process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 } catch (e) {
   process.stderr.write("Truffle: " + e.message + "\n");

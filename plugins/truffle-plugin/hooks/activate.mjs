@@ -1,6 +1,7 @@
 import { readFile, readdir, access, lstat } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkUpdates } from "../scripts/updates.mjs";
 import { wikiWorkflow } from "../scripts/wiki-workflow.mjs";
 
 // Native hooks run in the session's project. Read only local setup metadata:
@@ -27,6 +28,9 @@ async function context() {
     "Discover actual teammates, include the relevant context in a bounded request, and continue from their reply in the same thread. Collaboration must serve the user's task and sharing authorization; do not broadcast unrelated local context.",
     "The connector handles incoming work in dedicated sessions. Never start a foreground listener, poll, or duplicate a running worker. New sessions do not prove that a worker is online.",
   ];
+  const updates = await checkUpdates(store, { cachedOnly: true });
+  if (updates.updateAvailable) lines.push("Cached release notice (check freshness with updates): " + updates.notice);
+  lines.push("Onboard checks releases automatically with a daily cache. Surface an available update once to the operator and follow the bundled update workflow when authorized; never interrupt active work or resume paused agents to update.");
   let files;
   try {
     files = process.env.BOTSPACE_PROFILE
