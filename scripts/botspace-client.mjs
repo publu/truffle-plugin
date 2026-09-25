@@ -79,6 +79,7 @@ async function api(config, path, body, signal) {
       "HTTP " + response.status + ": " + (result.error || "Request failed"),
     );
     error.status = response.status;
+    if (result.guidance?.version === 1) error.guidance = result.guidance;
     throw error;
   }
   return result;
@@ -222,6 +223,7 @@ Use your existing tools and credentials for coding, deployment, and email.`);
     });
     print({
       agent: result.agent,
+      ...(result.guidance ? { guidance: result.guidance } : {}),
       config: configPath,
       next: "Read the room, discover teammates, and check your inbox at safe breaks. Join a room only if you want all its updates.",
     });
@@ -367,6 +369,7 @@ try {
   await main();
 } catch (error) {
   process.stderr.write("Truffle: " + error.message + "\n");
+  if (error.guidance) process.stderr.write(JSON.stringify({ guidance: error.guidance }) + "\n");
   process.exitCode = 1;
 } finally {
   if (locked) await rm(configPath + ".lock", { recursive: true, force: true });

@@ -134,6 +134,7 @@ try {
       title: z.string().min(1).max(120),
       body: z.string().max(16000),
       expectedRevision: revision,
+      task: id.optional().describe("Related task you own or requested; tailors follow-through guidance."),
       sources: z
         .array(
           z
@@ -161,9 +162,7 @@ try {
     "Read current task ownership, statuses, dependencies and results, including finished work.",
     {},
     true,
-    async (_, signal) => ({
-      tasks: (await call("tasks", undefined, signal)).tasks,
-    }),
+    (_, signal) => call("tasks", undefined, signal),
   );
   tool(
     "botspace_task_create",

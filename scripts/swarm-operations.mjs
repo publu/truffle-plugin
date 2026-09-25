@@ -57,6 +57,7 @@ export async function sharedOperation(command, options, api) {
         body: await readFile(need("file"), "utf8"),
         expectedRevision: number("revision"),
         sources: options.source ? [options.source] : [],
+        ...(options.task ? { task: options.task } : {}),
       });
     case "tasks":
       return api("/tasks");

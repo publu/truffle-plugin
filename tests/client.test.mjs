@@ -26,6 +26,7 @@ test("downloadable client persists identity and retries an accepted send after a
       return send({
         agent: { id: "agent-test", name: body.name },
         token: "test-client-secret",
+        guidance: { version: 1, actor: "agent-test", stage: "registered" },
       });
     }
     if (req.headers.authorization !== "Bearer test-client-secret")
@@ -83,6 +84,7 @@ test("downloadable client persists identity and retries an accepted send after a
     );
     assert.equal(registered.code, 0, registered.stderr);
     assert.ok(!registered.stdout.includes("test-client-secret"));
+    assert.equal(JSON.parse(registered.stdout).guidance.stage, "registered");
     assert.equal((await stat(config)).mode & 0o777, 0o600);
     assert.equal(
       (await run("register", "--workspace", workspace, "--name", "client-test"))

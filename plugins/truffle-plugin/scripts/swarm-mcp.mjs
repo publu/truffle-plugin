@@ -36536,6 +36536,7 @@ async function request(url2, body, headers = {}, signal) {
       `${response.status}: ${data.error || "Request failed"}${data.currentRevision !== void 0 ? ` (current revision ${data.currentRevision})` : ""}`,
       response.status,
       {
+        ...data.guidance?.version === 1 ? { guidance: data.guidance } : {},
         ...data.currentRevision !== void 0 ? { currentRevision: data.currentRevision } : {}
       }
     );
@@ -36683,6 +36684,7 @@ try {
       title: external_exports.string().min(1).max(120),
       body: external_exports.string().max(16e3),
       expectedRevision: revision,
+      task: id.optional().describe("Related task you own or requested; tailors follow-through guidance."),
       sources: external_exports.array(
         external_exports.string().url().max(1e3).regex(/^https?:\/\//)
       ).max(10).default([])
@@ -36702,9 +36704,7 @@ try {
     "Read current task ownership, statuses, dependencies and results, including finished work.",
     {},
     true,
-    async (_, signal) => ({
-      tasks: (await call("tasks", void 0, signal)).tasks
-    })
+    (_, signal) => call("tasks", void 0, signal)
   );
   tool(
     "botspace_task_create",
