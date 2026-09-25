@@ -12,7 +12,7 @@ import {
 import { constants } from "node:fs";
 import { resolve, join, delimiter, relative, sep } from "node:path";
 import { spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 
 import { engineVersion, newer } from "./updates.mjs";
 const runtimes = ["codex", "claude", "kimi", "hermes"];
@@ -68,6 +68,63 @@ function safeError(value) {
     .replace(/([#?&](?:invite|token|key)=)[^\s&]+/gi, "$1[redacted]")
     .replace(/\b[A-Za-z0-9_=-]{32,}\b/g, "[redacted]")
     .slice(-2000);
+}
+// The reviewed official installer also pins platform archive checksums. Keep uv,
+// downloaded Python, and Kanbot private; never change shell startup files.
+export const uvBootstrap = {
+  version: "0.12.19",
+  url: "https://astral.sh/uv/0.12.19/install.sh",
+  sha256: "61b349611f1b6e1ba33645f30c36da5287df2609dd7af8605d96a031435eb35b",
+};
+export function verifyUvInstaller(content) {
+  if (createHash("sha256").update(content).digest("hex") !== uvBootstrap.sha256)
+    throw Error(
+      "The uv installer checksum did not match. No installer was executed; retry with a verified Truffle release.",
+    );
+}
+async function ensureUv(base) {
+  const directory = join(base, "engines", "bootstrap");
+  await ownedPath(base, directory);
+  const privateUv = join(directory, "uv");
+  try {
+    await access(privateUv, constants.X_OK);
+    return privateUv;
+  } catch {}
+  const existing = await executable("uv");
+  if (existing) return existing;
+  const response = await fetch(uvBootstrap.url, {
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok)
+    throw Error(
+      `Could not download Truffle's installer (HTTP ${response.status}). Retry truffle install when connectivity is restored.`,
+    );
+  const content = await response.text();
+  verifyUvInstaller(content);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const script = join(directory, "install-" + randomUUID() + ".sh");
+  await writeFile(script, content, { mode: 0o600, flag: "wx" });
+  try {
+    await processRun(
+      "/bin/sh",
+      [script],
+      {
+        UV_UNMANAGED_INSTALL: directory,
+        UV_INSTALL_DIR: directory,
+        UV_NO_MODIFY_PATH: "1",
+        UV_DISABLE_UPDATE: "1",
+        UV_DOWNLOAD_URL: `https://github.com/astral-sh/uv/releases/download/${uvBootstrap.version}`,
+        INSTALLER_DOWNLOAD_URL: "",
+        UV_INSTALLER_GHE_BASE_URL: "",
+        UV_INSTALLER_GITHUB_BASE_URL: "",
+      },
+      90000,
+    );
+    await access(privateUv, constants.X_OK);
+    return privateUv;
+  } finally {
+    await rm(script, { force: true });
+  }
 }
 function processRun(binary, args, env = {}, timeout = 35000) {
   return new Promise((resolveRun, reject) => {
@@ -156,7 +213,7 @@ async function engine(base, details = false) {
   }
   if (!binary)
     throw Error(
-      "Managed agents need the optional runner. Run `truffle managed install`, then retry; your existing agents are unchanged.",
+      "Truffle's Kanbot dependency is missing. Run `truffle install`, then retry; your existing agents are unchanged.",
     );
   const version = (await processRun(binary, ["--version"])).match(
     /kanbot\s+(\d+)\.(\d+)\.(\d+)/i,
@@ -168,7 +225,13 @@ async function engine(base, details = false) {
     throw Error(
       `Managed agents need Kanbot ${engineVersion} or newer. Run truffle managed install to install the supported runner privately.`,
     );
-  return details ? { binary, version: version.slice(1).join("."), updateAvailable: newer(engineVersion, version.slice(1).join(".")) } : binary;
+  return details
+    ? {
+        binary,
+        version: version.slice(1).join("."),
+        updateAvailable: newer(engineVersion, version.slice(1).join(".")),
+      }
+    : binary;
 }
 function clean(result) {
   if (Array.isArray(result)) return result.map(clean);
@@ -182,7 +245,9 @@ function clean(result) {
 }
 async function invoke(base, connection, args) {
   // Older engines must remain inspectable and stoppable during an update.
-  const binary = ["status", "pause"].includes(args[0]) ? (await engine(base, true)).binary : await engine(base);
+  const binary = ["status", "pause"].includes(args[0])
+    ? (await engine(base, true)).binary
+    : await engine(base);
   const output = await processRun(binary, ["swarm", ...args], {
     KANBOT_HOME: connection.home,
   });
@@ -248,8 +313,8 @@ function options(argv) {
     const flag = argv[i];
     if (!flag.startsWith("--") || Object.hasOwn(result, flag.slice(2)))
       throw Error("Use named managed options once each. Run managed help.");
-    if (flag === "--no-start") {
-      result["no-start"] = true;
+    if (["--no-start", "--missing-only"].includes(flag)) {
+      result[flag.slice(2)] = true;
       continue;
     }
     if (!argv[i + 1] || argv[i + 1].startsWith("--"))
@@ -302,57 +367,148 @@ export async function managed({
       note: "Your agent handles setup. Existing-session connections stay independent. Reconnecting preserves saved settings and pause.",
     };
   if (command === "install") {
-    allowed(opts, []);
+    allowed(opts, ["missing-only"]);
     let installed;
-    try { installed = await engine(base, true); } catch { /* Missing engine can be installed privately. */ }
-    if (installed && !installed.updateAvailable)
-      return { installed: true, reused: true, engine: "kanbot", version: installed.version,
-        scope: "existing installation", next: "The engine already meets the supported version; no reinstall or downgrade was performed." };
-    {
-      await ownedPath(base, join(base, "managed"));
-      // One private engine serves every managed profile in this store. Refuse
-      // replacement while any affected team is running or cannot be inspected.
-      let profiles = [];
-      try { profiles = await readdir(join(base, "managed"), { withFileTypes: true }); }
-      catch (e) { if (e.code !== "ENOENT") throw e; }
-      for (const profileEntry of profiles) {
-        if (!profileEntry.isDirectory() || !/^[a-z0-9][a-z0-9_-]{0,39}$/.test(profileEntry.name)) continue;
-        for (const team of await managedConnections(base, profileEntry.name)) {
-          if (!team.configured) continue;
-          const status = await managedStatus(base, team);
-          if (status.available === false || status.running || status.active > 0 ||
-              Object.entries(status.jobs || {}).some(([state, count]) => count > 0 && ["queued", "running", "delivering", "remote_sending", "uncertain"].includes(state)))
-            throw Error("Managed update deferred: an affected team is running, has pending work, or cannot be inspected. Finish or reconcile its work, then pause only authorized teams before updating. Saved settings are unchanged.");
-        }
-      }
+    try {
+      installed = await engine(base, true);
+    } catch {
+      /* Missing engine can be installed privately. */
     }
-    if (process.platform === "win32")
-      throw Error(
-        "Use WSL for managed agents. Existing-session connections work on Windows.",
-      );
-    const uv = await executable("uv");
-    if (!uv)
-      throw Error(
-        "Install uv from https://docs.astral.sh/uv/getting-started/installation/, then run managed install.",
-      );
+    if (installed && !installed.updateAvailable)
+      return {
+        installed: true,
+        reused: true,
+        engine: "kanbot",
+        version: installed.version,
+        scope: "existing installation",
+        next: "The engine already meets the supported version; no reinstall or downgrade was performed.",
+      };
+    // Native session startup installs missing dependencies, never upgrades an
+    // existing engine under a worker. Explicit setup uses the update guards below.
+    if (installed && opts["missing-only"])
+      return {
+        installed: true,
+        ready: false,
+        deferred: true,
+        engine: "kanbot",
+        version: installed.version,
+        next: "Kanbot needs an update. Follow the safe update workflow when authorized; leave existing workers and pause state unchanged.",
+      };
     await ownedPath(base, join(base, "engines"));
     await mkdir(join(base, "engines"), { recursive: true, mode: 0o700 });
-    await processRun(
-      uv,
-      ["tool", "install", "--force", `kanbot==${engineVersion}`],
+    const lock = join(base, "engines", "install.lock");
+    try {
+      await mkdir(lock);
+    } catch (e) {
+      if (e.code === "EEXIST")
+        throw Error(
+          "Truffle dependency installation is already in progress. Check the installing process before retrying; do not start another installer.",
+        );
+      throw e;
+    }
+    try {
+      // Recheck after acquiring the store-wide lock.
+      try {
+        installed = await engine(base, true);
+      } catch {
+        installed = null;
+      }
+      if (installed && !installed.updateAvailable)
+        return {
+          installed: true,
+          reused: true,
+          engine: "kanbot",
+          version: installed.version,
+        };
       {
-        UV_TOOL_DIR: join(base, "engines", "tools"),
-        UV_TOOL_BIN_DIR: join(base, "engines", "bin"),
-      },
-      180000,
-    );
-    return {
-      installed: true,
-      engine: "kanbot",
-      version: engineVersion,
-      scope: "private Truffle store",
-      next: "Continue managed connect with the saved swarm, project and sender choices.",
-    };
+        await ownedPath(base, join(base, "managed"));
+        // One private engine serves every managed profile in this store. Refuse
+        // replacement while any affected team is running or cannot be inspected.
+        let profiles = [];
+        try {
+          profiles = await readdir(join(base, "managed"), {
+            withFileTypes: true,
+          });
+        } catch (e) {
+          if (e.code !== "ENOENT") throw e;
+        }
+        for (const profileEntry of profiles) {
+          if (
+            !profileEntry.isDirectory() ||
+            !/^[a-z0-9][a-z0-9_-]{0,39}$/.test(profileEntry.name)
+          )
+            continue;
+          for (const team of await managedConnections(
+            base,
+            profileEntry.name,
+          )) {
+            if (!team.configured) continue;
+            const status = await managedStatus(base, team);
+            if (
+              status.available === false ||
+              status.running ||
+              status.active > 0 ||
+              Object.entries(status.jobs || {}).some(
+                ([state, count]) =>
+                  count > 0 &&
+                  [
+                    "queued",
+                    "running",
+                    "delivering",
+                    "remote_sending",
+                    "uncertain",
+                  ].includes(state),
+              )
+            )
+              throw Error(
+                "Managed update deferred: an affected team is running, has pending work, or cannot be inspected. Finish or reconcile its work, then pause only authorized teams before updating. Saved settings are unchanged.",
+              );
+          }
+        }
+      }
+      if (process.platform === "win32")
+        throw Error(
+          "Use WSL for managed agents. Existing-session connections work on Windows.",
+        );
+      const uv = await ensureUv(base);
+      for (const part of ["tools", "bin", "python", "cache"])
+        await ownedPath(base, join(base, "engines", part));
+      await processRun(
+        uv,
+        [
+          "tool",
+          "install",
+          "--force",
+          "--python",
+          "3.11",
+          `kanbot==${engineVersion}`,
+        ],
+        {
+          UV_TOOL_DIR: join(base, "engines", "tools"),
+          UV_TOOL_BIN_DIR: join(base, "engines", "bin"),
+          UV_PYTHON_INSTALL_DIR: join(base, "engines", "python"),
+          UV_CACHE_DIR: join(base, "engines", "cache"),
+        },
+        180000,
+      );
+      const verified = await engine(base, true);
+      if (
+        verified.updateAvailable ||
+        verified.binary !== join(base, "engines", "bin", "kanbot")
+      )
+        throw Error(
+          "Kanbot installation did not produce the supported private executable. Retry truffle install after checking the installation error.",
+        );
+      return {
+        installed: true,
+        engine: "kanbot",
+        version: verified.version,
+        scope: "private Truffle store",
+        next: "Truffle dependencies are ready. Continue setup with the saved swarm, project and sender choices. No worker was started.",
+      };
+    } finally {
+      await rm(lock, { recursive: true, force: true });
+    }
   }
   if (command === "doctor") {
     allowed(opts, []);
@@ -455,9 +611,7 @@ export async function managed({
           "First setup needs --runtime, --directory and --allow-from. Reuse the operator’s existing choices.",
         );
       if (!runtimes.includes(opts.runtime))
-        throw Error(
-          "Choose codex, claude, kimi, or hermes.",
-        );
+        throw Error("Choose codex, claude, kimi, or hermes.");
       const directory = resolve(opts.directory);
       if (!(await stat(directory)).isDirectory())
         throw Error("Choose an existing project directory.");

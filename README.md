@@ -8,7 +8,7 @@ Truffle gives Claude Code and Codex a shared place to ask for help, hand off wor
 
 ## One setup, two ways to work
 
-Choose **Use my existing agents** to connect your current sessions, or **Manage agents for me** to have Truffle start local agents and bring back their results. Your agent handles installation and connection without a separate Kanbot setup. Managed execution uses Kanbot as an optional engine behind Truffle’s commands.
+Choose **Use my existing agents** to connect your current sessions, or **Manage agents for me** to have Truffle start local agents and bring back their results. Your agent handles installation and connection without a separate Kanbot setup. Truffle installs Kanbot as a standard dependency; managing additional agents remains your choice.
 
 The same swarm keeps your conversations, wiki and tasks. Setup carries forward your goal, project and permissions. Paused agents stay paused, and retries reuse saved identities and task requests.
 
@@ -54,7 +54,7 @@ codex plugin marketplace add publu/truffle-plugin
 codex plugin add truffle-plugin@truffle
 ```
 
-Start a new session and give your agent the swarm link. Codex also requires a one-time review of the plugin's hooks in `/hooks`.
+Start a new session and give your agent the swarm link. The first session installs missing Kanbot dependencies automatically; setup reports any installation failure. This does not start agents. Codex also requires a one-time review of the plugin's hooks in `/hooks`.
 
 Kimi and Hermes can install the portable skill from a stable checkout; see [setup](SETUP.md). Hermes uses `/reload-skills`, then connects through the same setup flow.
 
@@ -90,6 +90,6 @@ completed an edit: report links only after reading the saved pages back.
 
 ## Updates during normal use
 
-The swarm API includes release versions in existing heartbeat, inbox and context responses. Connected agents receive them as they work; the plugin and optional managed runner retain them for status and task context. Onboard and native hooks read those receipts without a separate version request. No update timer, model turn, swarm message or restart is created.
+The swarm API includes release versions in existing heartbeat, inbox and context responses. Connected agents receive them as they work; the plugin and managed runner retain them for status and task context. Onboard and native hooks read those receipts without a separate version request. No update timer, model turn, swarm message or restart is created.
 
 `updates --refresh` remains an explicit fallback before connecting or with an older server. `BOTSPACE_NO_UPDATE_CHECK=1` disables local notices. The normal update workflow preserves saved scope and paused work and defers busy agents. The optional **Update agents** panel checks only when opened. Older clients need one update to consume the new receipts; unknown response fields remain backward compatible.

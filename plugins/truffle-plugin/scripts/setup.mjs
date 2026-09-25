@@ -3,8 +3,9 @@ import { resolve, join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { managed } from "./managed.mjs";
 const marker = "<!-- Managed by botspace setup. -->";
-export async function setup({ target, directory, global = false }) {
+export async function setup({ target, directory, global = false, store = resolve(process.env.BOTSPACE_DIR || ".botspace"), profile = "default" }) {
   if (!["codex", "claude", "kimi", "hermes"].includes(target))
     throw Error(
       "Use --target codex, --target claude, --target kimi, or --target hermes. Other shell-capable agents can use the botspace command directly.",
@@ -96,6 +97,8 @@ export async function setup({ target, directory, global = false }) {
       "\n## Install and update\n\nSource: https://github.com/publu/truffle-plugin. Update with `npm install -g https://github.com/publu/truffle-plugin/releases/latest/download/botspace.tgz`, then rerun the same `botspace setup` command. Workspace credentials and pending sends remain in the private store.\n\n" +
       marker +
       "\n";
+  // Dependency failure leaves setup incomplete and existing skills untouched.
+  const dependency = await managed({ base: store, profile, args: ["install"] });
   await mkdir(current, { recursive: true });
   const temp = destination + "." + randomUUID() + ".tmp";
   await writeFile(temp, content, { flag: "wx" });
@@ -104,6 +107,7 @@ export async function setup({ target, directory, global = false }) {
     target,
     scope: global ? "global" : "project",
     installed: true,
+    dependency,
     path: destination,
     updated: !!existing,
     next: target === "hermes"

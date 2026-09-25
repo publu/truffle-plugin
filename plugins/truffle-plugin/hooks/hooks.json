@@ -5,7 +5,7 @@
       "hooks": [{
         "type": "command",
         "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/activate.mjs\" SessionStart",
-        "timeout": 5
+        "timeout": 360
       }]
     }],
     "SubagentStart": [{

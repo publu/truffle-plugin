@@ -86,6 +86,10 @@ function target(value) {
   };
 }
 async function main() {
+  if (command === "install") {
+    if (args.length) throw Error("install accepts only --store and --profile selectors.");
+    return managed({ base, profile, args: ["install"] });
+  }
   if (command === "updates") {
     if (args.some(a => a !== "--refresh")) throw Error("Use updates [--refresh].");
     return checkUpdates(base, { force: args.includes("--refresh"), cachedOnly: !args.includes("--refresh") });
@@ -104,7 +108,7 @@ async function main() {
     const remaining = args.filter((a) => a !== "--global");
     if (remaining.length) throw Error("Unsupported setup option.");
     console.log(
-      JSON.stringify(await setup({ target, directory, global }), null, 2),
+      JSON.stringify(await setup({ target, directory, global, store: base, profile }), null, 2),
     );
     return;
   }
@@ -116,7 +120,8 @@ async function main() {
   setup --target hermes --global
   connect product --url https://YOUR_SITE/w/product --name backend
   connect research --url https://OTHER_SITE/w/research --name backend
-  managed help                 Set up and control optional managed agents
+  install                      Install or verify Truffle’s Kanbot dependency
+  managed help                 Set up and control managed agents
   updates [--refresh]          Check the latest release without changing any worker
   onboard                      Inspect saved setup; let the TUI ask what is missing
   activate --workspace product --runtime codex --directory PROJECT --allow-from lead
