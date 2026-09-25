@@ -156,7 +156,7 @@ test('onboard recognizes a managed-only saved team',async t=>{
 });
 
 test('managed setup explains missing engine, missing runtime and connects an installed Hermes runner',async t=>{
- const noEngine=await fixture(t,{engine:false});const e=await noEngine.connect();assert.notEqual(e.code,0);assert.match(e.stderr,/managed install/);
+ const noEngine=await fixture(t,{engine:false});const e=await noEngine.connect();assert.notEqual(e.code,0);assert.match(e.stderr,/truffle install/);
  const noRuntime=await fixture(t,{runtime:false});const r=await noRuntime.connect();assert.notEqual(r.code,0);assert.match(r.stderr,/codex.*not installed/i);
  const f=await fixture(t);await writeFile(join(f.bin,'hermes'),`#!${process.execPath}\nprocess.exit(0);\n`,{mode:0o700});const h=await f.run(['managed','connect','--workspace','demo','--url','https://example.test/w/demo','--runtime','hermes','--directory',f.project,'--allow-from','human-owner']);
  assert.equal(okay(h).service.running,true);
@@ -167,12 +167,15 @@ test('managed setup explains missing engine, missing runtime and connects an ins
 test('managed installation confines uv tools and executables to the private store',async t=>{
  const f=await fixture(t,{engine:false});
  await writeFile(join(f.bin,'uv'),`#!${process.execPath}
-import {writeFileSync} from 'node:fs';
+import {writeFileSync,mkdirSync} from 'node:fs';
+import {join} from 'node:path';
+mkdirSync(process.env.UV_TOOL_BIN_DIR,{recursive:true});
+writeFileSync(join(process.env.UV_TOOL_BIN_DIR,'kanbot'),${JSON.stringify(fakeRunner)},{mode:0o700});
 writeFileSync(process.env.FAKE_CALLS,JSON.stringify({args:process.argv.slice(2),tools:process.env.UV_TOOL_DIR,bin:process.env.UV_TOOL_BIN_DIR}));
 `,{mode:0o700});
  const result=okay(await f.run(['managed','install']));assert.equal(result.installed,true);assert.equal(result.scope,'private Truffle store');
  const call=JSON.parse(await readFile(f.calls,'utf8'));
- assert.deepEqual(call.args,['tool','install','--force','kanbot==0.9.10']);
+ assert.deepEqual(call.args,['tool','install','--force','--python','3.11','kanbot==0.9.10']);
  assert.equal(call.tools,join(f.store,'engines','tools'));assert.equal(call.bin,join(f.store,'engines','bin'));
 });
 
@@ -199,4 +202,138 @@ test('managed subprocess errors redact invitation URLs and bearer credentials',a
  const invite='short-private-invite',bearer='short-private-bearer';
  const r=await f.connect([],{FAKE_FAIL:'Rejected https://example.test/w/demo#invite='+invite+' Authorization: Bearer '+bearer});
  assert.notEqual(r.code,0);assert.ok(!r.stderr.includes(invite));assert.ok(!r.stderr.includes(bearer));assert.match(r.stderr,/redacted/);
+});
+
+async function installer(
+  f,
+  { fail = false, missingBinary = false, delay = 0 } = {},
+) {
+  await writeFile(
+    join(f.bin, "uv"),
+    `#!${process.execPath}
+import {writeFileSync,mkdirSync,appendFileSync} from 'node:fs';
+import {join} from 'node:path';
+appendFileSync(process.env.FAKE_CALLS,JSON.stringify({command:'install',args:process.argv.slice(2)})+'\\n');
+await new Promise(r=>setTimeout(r,${delay}));
+if(${fail}){console.error('Dependency download unavailable');process.exit(1);}
+if(!${missingBinary}){
+mkdirSync(process.env.UV_TOOL_BIN_DIR,{recursive:true});
+writeFileSync(join(process.env.UV_TOOL_BIN_DIR,'kanbot'),${JSON.stringify(fakeRunner)},{mode:0o700});
+}
+`,
+    { mode: 0o700 },
+  );
+}
+
+test("plugin install installs once, verifies the binary, and never connects or starts agents", async (t) => {
+  const f = await fixture(t, { engine: false });
+  await installer(f);
+  assert.equal(okay(await f.run(["install"])).installed, true);
+  assert.equal(okay(await f.run(["install"])).reused, true);
+  assert.equal((await f.log()).length, 1);
+  assert.equal((await f.log())[0].command, "install");
+  await assert.rejects(readFile(f.metadata), { code: "ENOENT" });
+});
+
+test("portable setup cannot claim success after dependency failure; retry preserves saved state", async (t) => {
+  const f = await fixture(t, { engine: false });
+  await installer(f, { fail: true });
+  const marker = join(f.store, "identity.listener.stop");
+  await writeFile(marker, "paused");
+  const args = ["setup", "--target", "kimi", "--directory", f.project];
+  const failed = await f.run(args);
+  assert.notEqual(failed.code, 0);
+  assert.match(failed.stderr, /download unavailable/);
+  const skill = join(f.project, ".agents", "skills", "botspace", "SKILL.md");
+  await assert.rejects(readFile(skill), { code: "ENOENT" });
+  await installer(f);
+  const success = okay(await f.run(args));
+  assert.equal(success.dependency.installed, true);
+  assert.equal(await readFile(marker, "utf8"), "paused");
+  assert.ok((await f.log()).every((c) => c.command === "install"));
+});
+
+test("an installer returning zero without the executable is a failure", async (t) => {
+  const f = await fixture(t, { engine: false });
+  await installer(f, { missingBinary: true });
+  const r = await f.run(["install"]);
+  assert.notEqual(r.code, 0);
+  assert.match(r.stderr, /missing|executable/);
+  await assert.rejects(readFile(f.metadata), { code: "ENOENT" });
+});
+
+test("concurrent installs serialize by store instead of replacing the engine twice", async (t) => {
+  const f = await fixture(t, { engine: false });
+  await installer(f, { delay: 500 });
+  const results = await Promise.all([f.run(["install"]), f.run(["install"])]);
+  assert.equal(results.filter((r) => r.code === 0).length, 1);
+  assert.match(results.find((r) => r.code !== 0).stderr, /already in progress/);
+  assert.equal((await f.log()).length, 1);
+  assert.equal(okay(await f.run(["install"])).reused, true);
+});
+
+test("native first session installs dependencies, subsequent sessions reuse them, child turns never install", async (t) => {
+  const f = await fixture(t, { engine: false });
+  await installer(f);
+  const hook = resolve("plugins/truffle-plugin/hooks/activate.mjs");
+  const run = async (event, extra = {}) => {
+    const r = await execute(process.execPath, [hook, event], {
+      cwd: f.project,
+      env: {
+        ...process.env,
+        PATH: f.bin,
+        BOTSPACE_DIR: f.store,
+        FAKE_CALLS: f.calls,
+        ...extra,
+      },
+      timeout: 10000,
+    });
+    return JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
+  };
+  await run("SubagentStart");
+  await run("SessionStart", { BOTSPACE_CONNECTOR: "1" });
+  assert.equal((await f.log()).length, 0);
+  assert.match(await run("SessionStart"), /dependency ready: Kanbot/);
+  assert.match(await run("SessionStart"), /dependency ready: Kanbot/);
+  assert.equal((await f.log()).length, 1);
+  assert.equal((await f.log())[0].command, "install");
+});
+
+test("native dependency failure is visible and an older engine is never upgraded at startup", async (t) => {
+  const f = await fixture(t, { engine: false });
+  await installer(f, { fail: true });
+  const hook = resolve("plugins/truffle-plugin/hooks/activate.mjs");
+  const run = async () => {
+    const r = await execute(process.execPath, [hook, "SessionStart"], {
+      cwd: f.project,
+      env: {
+        ...process.env,
+        PATH: f.bin,
+        BOTSPACE_DIR: f.store,
+        FAKE_CALLS: f.calls,
+      },
+      timeout: 10000,
+    });
+    return JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
+  };
+  assert.match(
+    await run(),
+    /setup is incomplete: Dependency download unavailable/,
+  );
+  await writeFile(
+    join(f.bin, "kanbot"),
+    fakeRunner.replace("kanbot 0.9.10", "kanbot 0.9.8"),
+    { mode: 0o700 },
+  );
+  assert.match(await run(), /dependency update deferred/);
+  assert.equal((await f.log()).length, 1);
+});
+
+test("uv bootstrap rejects changed installer content before execution", async () => {
+  const { verifyUvInstaller } =
+    await import("../plugins/truffle-plugin/scripts/managed.mjs");
+  assert.throws(
+    () => verifyUvInstaller("echo altered-installer"),
+    /checksum did not match/,
+  );
 });

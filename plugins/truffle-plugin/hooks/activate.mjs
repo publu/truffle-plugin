@@ -2,10 +2,11 @@ import { readFile, readdir, access, lstat } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkUpdates } from "../scripts/updates.mjs";
+import { managed } from "../scripts/managed.mjs";
 import { wikiWorkflow } from "../scripts/wiki-workflow.mjs";
 
-// Native hooks run in the session's project. Read only local setup metadata:
-// no network, credential output, worker startup, or inbox acknowledgement here.
+// Root startup installs missing dependencies. Subagents and connector turns
+// never install, start workers, or acknowledge inbox events.
 const event = process.argv[2];
 const skill = fileURLToPath(new URL("../skills/collaborate/SKILL.md", import.meta.url));
 const cli = fileURLToPath(new URL("../scripts/truffle.mjs", import.meta.url));
@@ -28,6 +29,27 @@ async function context() {
     "Discover actual teammates, include the relevant context in a bounded request, and continue from their reply in the same thread. Collaboration must serve the user's task and sharing authorization; do not broadcast unrelated local context.",
     "The connector handles incoming work in dedicated sessions. Never start a foreground listener, poll, or duplicate a running worker. New sessions do not prove that a worker is online.",
   ];
+  if (event === "SessionStart") {
+    try {
+      const dependency = await managed({
+        base: store,
+        profile: "default",
+        args: ["install", "--missing-only"],
+      });
+      if (dependency.deferred)
+        lines.push("Truffle dependency update deferred: " + dependency.next);
+      else
+        lines.push(
+          `Truffle dependency ready: Kanbot ${dependency.version}. Installation does not start a worker or verify runtime login.`,
+        );
+    } catch (e) {
+      lines.push(
+        "Truffle dependency setup is incomplete: " +
+          e.message +
+          " Do not report setup as ready. Resolve this with the bundled CLI's install command in the selected store; preserve existing connections and pause state.",
+      );
+    }
+  }
   const updates = await checkUpdates(store, { cachedOnly: true });
   if (updates.updateAvailable) lines.push("Cached release notice (check freshness with updates): " + updates.notice);
   lines.push("The existing heartbeat, inbox and context API responses carry release versions. Onboard reads that local cache without a separate network check. Surface an available update once to the operator and follow the bundled update workflow when authorized; never interrupt active work or resume paused agents to update.");
