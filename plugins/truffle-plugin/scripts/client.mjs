@@ -55,9 +55,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/ws/lib/constants.js
+// ../truffle-kanbot-default/node_modules/ws/lib/constants.js
 var require_constants = __commonJS({
-  "node_modules/ws/lib/constants.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/constants.js"(exports, module) {
     "use strict";
     var BINARY_TYPES = ["nodebuffer", "arraybuffer", "fragments"];
     var hasBlob = typeof Blob !== "undefined";
@@ -78,9 +78,9 @@ var require_constants = __commonJS({
   }
 });
 
-// node_modules/ws/lib/buffer-util.js
+// ../truffle-kanbot-default/node_modules/ws/lib/buffer-util.js
 var require_buffer_util = __commonJS({
-  "node_modules/ws/lib/buffer-util.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/buffer-util.js"(exports, module) {
     "use strict";
     var { EMPTY_BUFFER } = require_constants();
     var FastBuffer = Buffer[Symbol.species];
@@ -153,9 +153,9 @@ var require_buffer_util = __commonJS({
   }
 });
 
-// node_modules/ws/lib/limiter.js
+// ../truffle-kanbot-default/node_modules/ws/lib/limiter.js
 var require_limiter = __commonJS({
-  "node_modules/ws/lib/limiter.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/limiter.js"(exports, module) {
     "use strict";
     var kDone = Symbol("kDone");
     var kRun = Symbol("kRun");
@@ -203,9 +203,9 @@ var require_limiter = __commonJS({
   }
 });
 
-// node_modules/ws/lib/permessage-deflate.js
+// ../truffle-kanbot-default/node_modules/ws/lib/permessage-deflate.js
 var require_permessage_deflate = __commonJS({
-  "node_modules/ws/lib/permessage-deflate.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/permessage-deflate.js"(exports, module) {
     "use strict";
     var zlib = __require("zlib");
     var bufferUtil = require_buffer_util();
@@ -586,9 +586,9 @@ var require_permessage_deflate = __commonJS({
   }
 });
 
-// node_modules/ws/lib/validation.js
+// ../truffle-kanbot-default/node_modules/ws/lib/validation.js
 var require_validation = __commonJS({
-  "node_modules/ws/lib/validation.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/validation.js"(exports, module) {
     "use strict";
     var { isUtf8 } = __require("buffer");
     var { hasBlob } = require_constants();
@@ -787,9 +787,9 @@ var require_validation = __commonJS({
   }
 });
 
-// node_modules/ws/lib/receiver.js
+// ../truffle-kanbot-default/node_modules/ws/lib/receiver.js
 var require_receiver = __commonJS({
-  "node_modules/ws/lib/receiver.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/receiver.js"(exports, module) {
     "use strict";
     var { Writable } = __require("stream");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -1410,9 +1410,9 @@ var require_receiver = __commonJS({
   }
 });
 
-// node_modules/ws/lib/sender.js
+// ../truffle-kanbot-default/node_modules/ws/lib/sender.js
 var require_sender = __commonJS({
-  "node_modules/ws/lib/sender.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/sender.js"(exports, module) {
     "use strict";
     var { Duplex } = __require("stream");
     var { randomFillSync } = __require("crypto");
@@ -1903,9 +1903,9 @@ var require_sender = __commonJS({
   }
 });
 
-// node_modules/ws/lib/event-target.js
+// ../truffle-kanbot-default/node_modules/ws/lib/event-target.js
 var require_event_target = __commonJS({
-  "node_modules/ws/lib/event-target.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/event-target.js"(exports, module) {
     "use strict";
     var { kForOnEventAttribute, kListener } = require_constants();
     var kCode = Symbol("kCode");
@@ -2132,9 +2132,9 @@ var require_event_target = __commonJS({
   }
 });
 
-// node_modules/ws/lib/extension.js
+// ../truffle-kanbot-default/node_modules/ws/lib/extension.js
 var require_extension = __commonJS({
-  "node_modules/ws/lib/extension.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/extension.js"(exports, module) {
     "use strict";
     var { tokenChars } = require_validation();
     function push(dest, name, elem) {
@@ -2285,9 +2285,9 @@ var require_extension = __commonJS({
   }
 });
 
-// node_modules/ws/lib/websocket.js
+// ../truffle-kanbot-default/node_modules/ws/lib/websocket.js
 var require_websocket = __commonJS({
-  "node_modules/ws/lib/websocket.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/websocket.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events");
     var https = __require("https");
@@ -3181,9 +3181,9 @@ var require_websocket = __commonJS({
   }
 });
 
-// node_modules/ws/lib/stream.js
+// ../truffle-kanbot-default/node_modules/ws/lib/stream.js
 var require_stream = __commonJS({
-  "node_modules/ws/lib/stream.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/stream.js"(exports, module) {
     "use strict";
     var WebSocket2 = require_websocket();
     var { Duplex } = __require("stream");
@@ -3279,9 +3279,9 @@ var require_stream = __commonJS({
   }
 });
 
-// node_modules/ws/lib/subprotocol.js
+// ../truffle-kanbot-default/node_modules/ws/lib/subprotocol.js
 var require_subprotocol = __commonJS({
-  "node_modules/ws/lib/subprotocol.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/subprotocol.js"(exports, module) {
     "use strict";
     var { tokenChars } = require_validation();
     function parse(header) {
@@ -3324,9 +3324,9 @@ var require_subprotocol = __commonJS({
   }
 });
 
-// node_modules/ws/lib/websocket-server.js
+// ../truffle-kanbot-default/node_modules/ws/lib/websocket-server.js
 var require_websocket_server = __commonJS({
-  "node_modules/ws/lib/websocket-server.js"(exports, module) {
+  "../truffle-kanbot-default/node_modules/ws/lib/websocket-server.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events");
     var http = __require("http");
@@ -3773,7 +3773,7 @@ async function sharedOperation(command2, options2, api2) {
   };
   switch (command2) {
     case "context":
-      return api2("/context" + query({ task: options2.task }));
+      return api2("/context" + query({ task: options2.task, thread: options2.thread }));
     case "knowledge":
       return api2("/knowledge" + query({ q: options2.query, task: options2.task }));
     case "executions":
@@ -3806,7 +3806,10 @@ async function sharedOperation(command2, options2, api2) {
         title: need("title"),
         room: options2.room || "general",
         owner: options2.owner || "",
-        dependencies: options2.dependencies?.split(",") || []
+        dependencies: options2.dependencies?.split(",") || [],
+        ...options2.intent ? { intent: options2.intent } : {},
+        ...options2.file || options2.request ? { request: options2.file ? await readFile(options2.file, "utf8") : options2.request } : {},
+        ...options2.criteria ? { criteria: JSON.parse(options2.criteria) } : {}
       });
     case "claim":
       return api2("/claim", { id: need("id") });
@@ -3855,7 +3858,7 @@ async function sharedOperation(command2, options2, api2) {
   }
 }
 
-// node_modules/ws/wrapper.mjs
+// ../truffle-kanbot-default/node_modules/ws/wrapper.mjs
 var import_stream = __toESM(require_stream(), 1);
 var import_extension = __toESM(require_extension(), 1);
 var import_permessage_deflate = __toESM(require_permessage_deflate(), 1);
@@ -4117,14 +4120,14 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   status --status working         Report working, waiting, or idle
   knowledge [--query TEXT] [--task ID]  Cited swarm evidence for synthesis
   executions [--root ID]          Durable turns, handoffs and saved results
-  context [--task ID]             Shared project context and optional task checkpoint
+  context [--task ID] [--thread ID]             Shared project context and optional task checkpoint
   pages                          List shared wiki pages
   page --id PATH                 Read a page (optional --revision N)
   search --query TEXT             Search the shared wiki
   write --id PATH --title TEXT --file FILE --revision N
   changes [--after CURSOR]        Catch up on wiki changes
   tasks                          Read current shared tasks
-  task-create --id ID --title TEXT [--owner AGENT_ID]
+  task-create --id ID --title TEXT [--owner AGENT_ID --file BRIEF --criteria JSON --intent build --dependencies ID,ID]
   claim --id ID                  Claim an unassigned task
   task-status --id ID --version N --status review --result TEXT
   checkpoint --id ID --version N --summary TEXT
