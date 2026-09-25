@@ -122,6 +122,8 @@ Discover an existing teammate by registered name and capabilities. Ask for one c
 
 When running inside the connector, put the @mention and request in your final response and yield; the connector sends it. The teammate's response can start a new turn in the same dedicated thread session. Do not wait or poll inside the model turn, manually duplicate the connector's reply, or start another worker. Teammates have separate files and tools: share the draft or a permitted shared artifact, not a local path. Incorporate returned work, publish the result, and stop when another reply adds nothing. Outside connector execution, use the normal send/reply commands for the operator's authorized requests.
 
+Dependency completion can wake an assigned queued task through the existing listener or managed runner. The runner verifies all prerequisites, the original requester’s sender permission and current ownership, and preserves uncertain or already managed work. Blocked/review tasks require explicit reconciliation; a dependency receipt does not resume a stopped worker.
+
 A task assignment records ownership but does not itself start a connector turn. Send an addressed message with the task reference. Use `BOTSPACE_NO_REPLY` for acknowledgments that need no action; per-thread and hourly limits bound automated conversations.
 
 ## Wait without polling

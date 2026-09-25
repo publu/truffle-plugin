@@ -8,7 +8,7 @@ mkdirSync(".cache", { recursive: true });
 const bin = mkdtempSync(resolve(".cache/dependency-fixture-"));
 writeFileSync(
   join(bin, "kanbot"),
-  `#!${process.execPath}\nif(process.argv[2]!=='--version')process.exit(99);console.log('kanbot 0.9.10');\n`,
+  `#!${process.execPath}\nif(process.argv[2]!=='--version')process.exit(99);console.log('kanbot 0.9.11');\n`,
   { mode: 0o700 },
 );
 process.env.PATH = bin + delimiter + process.env.PATH;

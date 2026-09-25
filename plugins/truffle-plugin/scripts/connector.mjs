@@ -60,6 +60,23 @@ export function allowedAuthor(event, agents, allow) {
     (allow.includes("humans") && /^(human-|account:)/.test(event.actor))
   );
 }
+function readyTask(task, tasks, config, agents) {
+  return task?.owner === config.agentId && task.status === "todo" &&
+    allowedAuthor({ actor: task.creator }, agents, config.allow || []) &&
+    (task.dependencies || []).every(id => tasks.some(t => t.id === id && t.status === "done"));
+}
+
+export async function queueReadyTasks({ event, state, api, config, agents }) {
+  if (event.type !== "task.updated") return;
+  const { tasks } = await api("/tasks");
+  if (!tasks.some(t => t.id === event.objectId && t.status === "done")) return;
+  for (const task of tasks) {
+    if (!task.dependencies?.includes(event.objectId) || !readyTask(task, tasks, config, agents)) continue;
+    const key = `ready:${task.id}:${task.version || 1}`;
+    if (state.jobs[key] || Object.values(state.jobs).some(j => j.task === task.id && j.status !== "done")) continue;
+    state.jobs[key] = { event, task: task.id, requester: task.creator, ready: true, key, status: "queued" };
+  }
+}
 // Budget whole records so shared context always remains valid JSON.
 export function boundedContext(context = {}, max = 12000) {
   const selected = { omitted: [] };
@@ -150,9 +167,25 @@ Respond to the triggering message, using later messages only as context. Do not 
 // A crash during tool execution is marked uncertain, never blindly executed twice.
 export async function handleJob({ job, state, persist, api, run, config }) {
   if (job.status === "queued") {
-    const thread = await api(
-      "/threads/" + encodeURIComponent(job.event.objectId),
-    );
+    let thread;
+    if (job.ready) {
+      const [{ tasks }, directory] = await Promise.all([api("/tasks"), api("/agents")]);
+      const task = tasks.find(t => t.id === job.task);
+      if (!readyTask(task, tasks, config, directory.agents || directory) || task.creator !== job.requester) {
+        job.status = "done";
+        job.skipped = "Task is no longer authorized and ready; no model turn started.";
+        await persist();
+        await api("/ack", { ids: [job.event.id] });
+        return;
+      }
+      job.newThread = !task.discussion;
+      thread = task.discussion ? await api("/threads/" + encodeURIComponent(task.discussion)) : {
+        root: { id: replyId(config.api, config.agentId, job.key), room: task.room,
+          author: task.creator, body: `Task ${task.id} is ready after its prerequisites completed. Read and claim this saved task before working.\n${task.request || task.title}` }, replies: [],
+      };
+    } else {
+      thread = await api("/threads/" + encodeURIComponent(job.event.objectId));
+    }
     job.root = thread.root.id;
     job.room = thread.root.room;
     const count = state.threadTurns[job.root] || 0;
@@ -170,7 +203,7 @@ export async function handleJob({ job, state, persist, api, run, config }) {
     // Legacy servers may not expose shared context yet.
     let context;
     try {
-      context = await api("/context?" + new URLSearchParams({ thread: job.root }));
+      context = await api("/context?" + new URLSearchParams(job.task ? { task: job.task } : { thread: job.root }));
     } catch (error) {
       if (error.status !== 404) throw error;
     }
@@ -181,6 +214,9 @@ export async function handleJob({ job, state, persist, api, run, config }) {
       context.sourceOmissions = knowledge.omitted;
     }
     if (context) context.wikiEntry = await loadWikiEntry(api, context, config.api);
+    // Retain task identity for uncertain message-triggered turns as well, so a
+    // later dependency receipt cannot silently replay their tools.
+    if (context?.task?.id) job.task = context.task.id;
     job.status = "running";
     state.turns.push(Date.now());
     await persist();
@@ -218,9 +254,9 @@ export async function handleJob({ job, state, persist, api, run, config }) {
   if (job.status === "replying") {
     if (job.body)
       await api("/posts", {
-        id: replyId(config.api, config.agentId, job.event.id),
+        id: replyId(config.api, config.agentId, job.key || job.event.id),
         room: job.room,
-        parent: job.root,
+        ...(job.newThread ? { task: job.task } : { parent: job.root }),
         body: job.body,
       });
     await api("/ack", { ids: [job.event.id] });
@@ -636,6 +672,7 @@ export async function connector({
         }
         const agents = listed.agents || listed;
         for (const event of inbox.events) {
+          await queueReadyTasks({ event, state, api, config, agents });
           if (
             !state.jobs[event.id] &&
             ["message", "reply"].includes(event.type) &&
