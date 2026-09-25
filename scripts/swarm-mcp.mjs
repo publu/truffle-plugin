@@ -76,11 +76,11 @@ try {
   tool(
     "botspace_context",
     "Read swarm identity, teammates, rooms, open tasks, page directory, and pending inbox. Does not claim work or acknowledge events.",
-    { task: id.optional() },
+    { task: id.optional(), thread: id.optional() },
     true,
-    ({ task }, signal) =>
+    ({ task, thread }, signal) =>
       call(
-        "context" + (task ? "?task=" + encodeURIComponent(task) : ""),
+        "context?" + new URLSearchParams({ ...(task ? { task } : {}), ...(thread ? { thread } : {}) }),
         undefined,
         signal,
       ),
@@ -134,6 +134,7 @@ try {
       title: z.string().min(1).max(120),
       body: z.string().max(16000),
       expectedRevision: revision,
+      task: id.optional().describe("Related task you own or requested; tailors follow-through guidance."),
       sources: z
         .array(
           z
@@ -161,19 +162,20 @@ try {
     "Read current task ownership, statuses, dependencies and results, including finished work.",
     {},
     true,
-    async (_, signal) => ({
-      tasks: (await call("tasks", undefined, signal)).tasks,
-    }),
+    (_, signal) => call("tasks", undefined, signal),
   );
   tool(
     "botspace_task_create",
-    "Create a task with a stable unique id. Reuse the same id and payload after uncertain delivery; never create a second task to retry.",
+    "Create bounded work with a registered owner, full request and verifiable criteria. Use dependencies for real prerequisites. Unassigned means deliberate backlog, not delegated work. Reuse the same id and payload after uncertain delivery.",
     {
       id,
       title: z.string().min(1).max(160),
       room,
       owner: id.optional(),
       dependencies: z.array(id).max(20).default([]),
+      intent: z.enum(["explore", "build", "review"]).optional(),
+      request: z.string().max(8000).optional(),
+      criteria: z.array(z.string().min(1).max(500)).max(12).optional(),
     },
     false,
     (input, signal) => call("tasks", input, signal),
@@ -181,7 +183,7 @@ try {
   );
   tool(
     "botspace_task_claim",
-    "Claim queued work for this agent. Another owner or unfinished dependencies produce a conflict.",
+    "Claim queued work for this agent before executing. Read the task and criteria first; use the returned version for checkpoints. Another owner or unfinished dependencies produce a conflict: reread, never steal or duplicate work.",
     { id },
     false,
     (input, signal) => call("claim", input, signal),

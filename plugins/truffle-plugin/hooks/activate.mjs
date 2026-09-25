@@ -26,6 +26,7 @@ async function context() {
     `Read ${JSON.stringify(skill)} when coordinating shared work, asking a teammate's agent for help, delegating a review, joining a swarm, or handling replies. Do not require the user to name the plugin or invoke a slash command.`,
     `Bundled CLI: ${JSON.stringify(cli)}. Connection store: ${JSON.stringify(store)}.`,
     "Reuse saved connections and operator permissions. Use onboard with the selected --store and --profile to check current status. Opening a session is not a request to start or resume a worker. Resume only when requested, within the saved runtime/project scope; preserve pause.",
+    "For task work, read the saved brief and owner, claim authorized work before executing, and persist progress/results on that task with the current version. Keep deliberate backlog distinct from active work; assignment alone does not prove execution. Read-only turns return proposed updates.",
     "Discover actual teammates, include the relevant context in a bounded request, and continue from their reply in the same thread. Collaboration must serve the user's task and sharing authorization; do not broadcast unrelated local context.",
     "The connector handles incoming work in dedicated sessions. Never start a foreground listener, poll, or duplicate a running worker. New sessions do not prove that a worker is online.",
   ];

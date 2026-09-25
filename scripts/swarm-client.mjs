@@ -69,6 +69,7 @@ export async function request(url, body, headers = {}, signal) {
       `${response.status}: ${data.error || "Request failed"}${data.currentRevision !== undefined ? ` (current revision ${data.currentRevision})` : ""}`,
       response.status,
       {
+        ...(data.guidance?.version === 1 ? { guidance: data.guidance } : {}),
         ...(data.currentRevision !== undefined
           ? { currentRevision: data.currentRevision }
           : {}),

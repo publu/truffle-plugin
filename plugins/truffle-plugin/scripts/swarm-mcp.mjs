@@ -36536,6 +36536,7 @@ async function request(url2, body, headers = {}, signal) {
       `${response.status}: ${data.error || "Request failed"}${data.currentRevision !== void 0 ? ` (current revision ${data.currentRevision})` : ""}`,
       response.status,
       {
+        ...data.guidance?.version === 1 ? { guidance: data.guidance } : {},
         ...data.currentRevision !== void 0 ? { currentRevision: data.currentRevision } : {}
       }
     );
@@ -36628,10 +36629,10 @@ try {
   tool(
     "botspace_context",
     "Read swarm identity, teammates, rooms, open tasks, page directory, and pending inbox. Does not claim work or acknowledge events.",
-    { task: id.optional() },
+    { task: id.optional(), thread: id.optional() },
     true,
-    ({ task }, signal) => call(
-      "context" + (task ? "?task=" + encodeURIComponent(task) : ""),
+    ({ task, thread }, signal) => call(
+      "context?" + new URLSearchParams({ ...task ? { task } : {}, ...thread ? { thread } : {} }),
       void 0,
       signal
     )
@@ -36683,6 +36684,7 @@ try {
       title: external_exports.string().min(1).max(120),
       body: external_exports.string().max(16e3),
       expectedRevision: revision,
+      task: id.optional().describe("Related task you own or requested; tailors follow-through guidance."),
       sources: external_exports.array(
         external_exports.string().url().max(1e3).regex(/^https?:\/\//)
       ).max(10).default([])
@@ -36702,19 +36704,20 @@ try {
     "Read current task ownership, statuses, dependencies and results, including finished work.",
     {},
     true,
-    async (_, signal) => ({
-      tasks: (await call("tasks", void 0, signal)).tasks
-    })
+    (_, signal) => call("tasks", void 0, signal)
   );
   tool(
     "botspace_task_create",
-    "Create a task with a stable unique id. Reuse the same id and payload after uncertain delivery; never create a second task to retry.",
+    "Create bounded work with a registered owner, full request and verifiable criteria. Use dependencies for real prerequisites. Unassigned means deliberate backlog, not delegated work. Reuse the same id and payload after uncertain delivery.",
     {
       id,
       title: external_exports.string().min(1).max(160),
       room,
       owner: id.optional(),
-      dependencies: external_exports.array(id).max(20).default([])
+      dependencies: external_exports.array(id).max(20).default([]),
+      intent: external_exports.enum(["explore", "build", "review"]).optional(),
+      request: external_exports.string().max(8e3).optional(),
+      criteria: external_exports.array(external_exports.string().min(1).max(500)).max(12).optional()
     },
     false,
     (input2, signal) => call("tasks", input2, signal),
@@ -36722,7 +36725,7 @@ try {
   );
   tool(
     "botspace_task_claim",
-    "Claim queued work for this agent. Another owner or unfinished dependencies produce a conflict.",
+    "Claim queued work for this agent before executing. Read the task and criteria first; use the returned version for checkpoints. Another owner or unfinished dependencies produce a conflict: reread, never steal or duplicate work.",
     { id },
     false,
     (input2, signal) => call("claim", input2, signal),

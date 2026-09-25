@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
-export const engineVersion = "0.9.10";
+export const engineVersion = "0.9.11";
 export const releaseURL = "https://app.truffle.tech/truffle-plugin.json";
 export const validVersion = (v) => typeof v === "string" && /^(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})$/.test(v);
 export function newer(a, b) {

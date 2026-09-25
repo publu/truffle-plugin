@@ -12,7 +12,7 @@ import {mkdirSync,readFileSync,writeFileSync,appendFileSync,existsSync,statSync}
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 const args=process.argv.slice(2);
-if(args[0]==='--version'){console.log('kanbot 0.9.10');process.exit(0);}
+if(args[0]==='--version'){console.log('kanbot 0.9.11');process.exit(0);}
 if(args[0]!=='swarm')process.exit(2);
 const home=process.env.KANBOT_HOME;
 mkdirSync(home,{recursive:true});
@@ -64,11 +64,11 @@ function okay(r){assert.equal(r.code,0,r.stderr);return r.json;}
 
 test('managed setup rejects engines older than the supported durable runner',async t=>{
  const f=await fixture(t);
- await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.10','kanbot 0.9.8'),{mode:0o700});
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.11','kanbot 0.9.8'),{mode:0o700});
  const result=await f.connect();
- assert.notEqual(result.code,0);assert.match(result.stderr,/0\.9\.10 or newer/);
+ assert.notEqual(result.code,0);assert.match(result.stderr,/0\.9\.11 or newer/);
  const doctor=okay(await f.run(['managed','doctor']));
- assert.equal(doctor.installedVersion,'0.9.8');assert.equal(doctor.supportedVersion,'0.9.10');assert.equal(doctor.updateAvailable,true);assert.equal(doctor.ready,false);
+ assert.equal(doctor.installedVersion,'0.9.8');assert.equal(doctor.supportedVersion,'0.9.11');assert.equal(doctor.updateAvailable,true);assert.equal(doctor.ready,false);
  assert.equal((await f.log()).length,0);
 });
 
@@ -175,13 +175,13 @@ writeFileSync(process.env.FAKE_CALLS,JSON.stringify({args:process.argv.slice(2),
 `,{mode:0o700});
  const result=okay(await f.run(['managed','install']));assert.equal(result.installed,true);assert.equal(result.scope,'private Truffle store');
  const call=JSON.parse(await readFile(f.calls,'utf8'));
- assert.deepEqual(call.args,['tool','install','--force','--python','3.11','kanbot==0.9.10']);
+ assert.deepEqual(call.args,['tool','install','--force','--python','3.11','kanbot==0.9.11']);
  assert.equal(call.tools,join(f.store,'engines','tools'));assert.equal(call.bin,join(f.store,'engines','bin'));
 });
 
 test('managed updates inspect older running teams and defer replacement without stopping them', async t => {
  const f=await fixture(t);okay(await f.connect());
- await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.10','kanbot 0.9.8'),{mode:0o700});
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.11','kanbot 0.9.8'),{mode:0o700});
  assert.equal(okay(await f.run(['managed','status','--workspace','demo'])).running,true);
  const result=await f.run(['managed','install']);
  assert.notEqual(result.code,0);assert.match(result.stderr,/update deferred/);
@@ -191,7 +191,7 @@ test('managed updates inspect older running teams and defer replacement without 
 
 test('managed install reuses a newer engine without downgrading or starting workers', async t => {
  const f=await fixture(t);
- await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.10','kanbot 0.10.0'),{mode:0o700});
+ await writeFile(join(f.bin,'kanbot'),fakeRunner.replace('kanbot 0.9.11','kanbot 0.10.0'),{mode:0o700});
  const result=okay(await f.run(['managed','install']));
  assert.equal(result.reused,true);assert.equal(result.version,'0.10.0');
  assert.deepEqual(await f.log(),[]);
@@ -322,7 +322,7 @@ test("native dependency failure is visible and an older engine is never upgraded
   );
   await writeFile(
     join(f.bin, "kanbot"),
-    fakeRunner.replace("kanbot 0.9.10", "kanbot 0.9.8"),
+    fakeRunner.replace("kanbot 0.9.11", "kanbot 0.9.8"),
     { mode: 0o700 },
   );
   assert.match(await run(), /dependency update deferred/);

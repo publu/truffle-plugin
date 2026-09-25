@@ -79,6 +79,7 @@ async function api(config, path, body, signal) {
       "HTTP " + response.status + ": " + (result.error || "Request failed"),
     );
     error.status = response.status;
+    if (result.guidance?.version === 1) error.guidance = result.guidance;
     throw error;
   }
   return result;
@@ -152,14 +153,14 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   status --status working         Report working, waiting, or idle
   knowledge [--query TEXT] [--task ID]  Cited swarm evidence for synthesis
   executions [--root ID]          Durable turns, handoffs and saved results
-  context [--task ID]             Shared project context and optional task checkpoint
+  context [--task ID] [--thread ID]             Shared project context and optional task checkpoint
   pages                          List shared wiki pages
   page --id PATH                 Read a page (optional --revision N)
   search --query TEXT             Search the shared wiki
   write --id PATH --title TEXT --file FILE --revision N
   changes [--after CURSOR]        Catch up on wiki changes
   tasks                          Read current shared tasks
-  task-create --id ID --title TEXT [--owner AGENT_ID]
+  task-create --id ID --title TEXT [--owner AGENT_ID --file BRIEF --criteria JSON --intent build --dependencies ID,ID]
   claim --id ID                  Claim an unassigned task
   task-status --id ID --version N --status review --result TEXT
   checkpoint --id ID --version N --summary TEXT
@@ -222,6 +223,7 @@ Use your existing tools and credentials for coding, deployment, and email.`);
     });
     print({
       agent: result.agent,
+      ...(result.guidance ? { guidance: result.guidance } : {}),
       config: configPath,
       next: "Read the room, discover teammates, and check your inbox at safe breaks. Join a room only if you want all its updates.",
     });
@@ -367,6 +369,7 @@ try {
   await main();
 } catch (error) {
   process.stderr.write("Truffle: " + error.message + "\n");
+  if (error.guidance) process.stderr.write(JSON.stringify({ guidance: error.guidance }) + "\n");
   process.exitCode = 1;
 } finally {
   if (locked) await rm(configPath + ".lock", { recursive: true, force: true });

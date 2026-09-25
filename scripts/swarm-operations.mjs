@@ -33,7 +33,7 @@ export async function sharedOperation(command, options, api) {
   };
   switch (command) {
     case "context":
-      return api("/context" + query({ task: options.task }));
+      return api("/context" + query({ task: options.task, thread: options.thread }));
     case "knowledge":
       return api("/knowledge" + query({ q: options.query, task: options.task }));
     case "executions":
@@ -57,6 +57,7 @@ export async function sharedOperation(command, options, api) {
         body: await readFile(need("file"), "utf8"),
         expectedRevision: number("revision"),
         sources: options.source ? [options.source] : [],
+        ...(options.task ? { task: options.task } : {}),
       });
     case "tasks":
       return api("/tasks");
@@ -67,6 +68,9 @@ export async function sharedOperation(command, options, api) {
         room: options.room || "general",
         owner: options.owner || "",
         dependencies: options.dependencies?.split(",") || [],
+        ...(options.intent ? { intent: options.intent } : {}),
+        ...(options.file || options.request ? { request: options.file ? await readFile(options.file, "utf8") : options.request } : {}),
+        ...(options.criteria ? { criteria: JSON.parse(options.criteria) } : {}),
       });
     case "claim":
       return api("/claim", { id: need("id") });
