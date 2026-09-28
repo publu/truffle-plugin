@@ -13,7 +13,9 @@ async function run(cwd, event = "SessionStart", extraEnv = {}) {
   for (const key of ["BOTSPACE_DIR", "BOTSPACE_PROFILE", "BOTSPACE_CONNECTOR"]) delete env[key];
   Object.assign(env, extraEnv);
   const { stdout, stderr } = await exec("/bin/sh", ["-c", hooks[event][0].hooks[0].command], {
-    cwd, env, timeout: 3000,
+    // SessionStart may perform the first private Kanbot dependency check/install.
+    // Keep this bounded, but allow normal cold-start filesystem/uv latency.
+    cwd, env, timeout: 10000,
   });
   assert.equal(stderr, "");
   const output = JSON.parse(stdout).hookSpecificOutput;
