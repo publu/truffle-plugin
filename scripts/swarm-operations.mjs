@@ -14,6 +14,7 @@ export const sharedCommands = [
   "task-status",
   "checkpoint",
   "export",
+  "entity",
 ];
 export async function sharedOperation(command, options, api) {
   const need = (key) => {
@@ -61,6 +62,13 @@ export async function sharedOperation(command, options, api) {
       });
     case "tasks":
       return api("/tasks");
+    case "entity":
+      // A Network record: a person or company the operator works with.
+      return api("/entities", {
+        name: need("name"),
+        kind: options.kind || "person",
+        ...(options.summary ? { summary: options.summary } : {}),
+      });
     case "task-create":
       return api("/tasks", {
         id: need("id"),

@@ -522,7 +522,11 @@ export async function connector({
         log: paths.log,
         next: "Startup continues in the background. Use listener-status to check readiness.",
       };
-    throw Error("Listener could not start. Inspect " + paths.log);
+    const failed = (await readJSON(paths.state))?.lastError;
+    throw Error(
+      "Listener could not start" +
+        (failed ? ": " + failed : ". Inspect " + paths.log),
+    );
   }
   if (owner) await rm(paths.lock, { recursive: true, force: true });
   try {
@@ -577,23 +581,38 @@ export async function connector({
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    if (!r.ok)
-      throw Object.assign(Error("Truffle HTTP " + r.status), {
-        status: r.status,
-      });
+    if (!r.ok) {
+      // Keep the server's reason, e.g. "disconnected by the workspace owner".
+      const reason = await r.json().then((b) => b?.error, () => "");
+      throw Object.assign(
+        Error("Truffle HTTP " + r.status + (reason ? ": " + String(reason).slice(0, 300) : "")),
+        { status: r.status },
+      );
+    }
     const response = await r.json();
     if (store && response?.releases) await recordApiReleases(store, response.releases);
     return response;
   };
-  let heartbeatBusy = false;
+  // A revoked token never heals: stop instead of retrying and keep the reason.
+  let fatal;
+  const giveUp = (error) => {
+    fatal ??= error.message;
+    stop();
+  };
+  let heartbeatBusy = false,
+    heartbeatAfter = 0;
   const heartbeat = async () => {
-    if (heartbeatBusy || controller.signal.aborted) return;
+    if (heartbeatBusy || controller.signal.aborted || Date.now() < heartbeatAfter)
+      return;
     heartbeatBusy = true;
     try {
       await api("/heartbeat", {
         status: state.phase === "working" ? "working" : "waiting",
       });
-    } catch {
+    } catch (error) {
+      if (error.status === 401) giveUp(error);
+      // The server allows a bounded number of heartbeats per minute; wait it out.
+      else if (error.status === 429) heartbeatAfter = Date.now() + 60000;
     } finally {
       heartbeatBusy = false;
     }
@@ -649,8 +668,10 @@ export async function connector({
           if (
             [401, 403, 404].includes(error.status) ||
             /HTTP (401|403|404)|Workspace access changed/.test(error.message)
-          )
-            throw error;
+          ) {
+            // Ask once for the plain reason; a disconnected agent gets it from /me.
+            throw await api("/me").then(() => error, (e) => (e.status === 401 ? e : error));
+          }
           // A missing client never heals. Exit non-zero so a supervisor can restart the listener.
           if (!(await access(pinned).then(() => true, () => false)))
             throw Error("Listener client file was removed: " + pinned);
@@ -741,6 +762,7 @@ export async function connector({
           status: job.status,
           error: e.message,
         });
+        if (e.status === 401) giveUp(e);
         if (job.status === "replying") {
           if (++failures >= 3) break;
           await sleep(1000 * 2 ** failures, undefined, {
@@ -750,9 +772,10 @@ export async function connector({
       }
       if (once) break;
     }
+    if (fatal) throw Error(fatal);
   } catch (e) {
-    state.lastError = controller.signal.aborted ? undefined : e.message;
-    if (!controller.signal.aborted) throw e;
+    state.lastError = fatal || (controller.signal.aborted ? undefined : e.message);
+    if (fatal || !controller.signal.aborted) throw e;
   } finally {
     clearInterval(heartbeatTimer);
     state.phase = "stopped";
