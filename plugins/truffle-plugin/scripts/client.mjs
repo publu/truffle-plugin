@@ -3753,7 +3753,8 @@ var sharedCommands = [
   "claim",
   "task-status",
   "checkpoint",
-  "export"
+  "export",
+  "entity"
 ];
 async function sharedOperation(command2, options2, api2) {
   const need = (key) => {
@@ -3801,6 +3802,12 @@ async function sharedOperation(command2, options2, api2) {
       });
     case "tasks":
       return api2("/tasks");
+    case "entity":
+      return api2("/entities", {
+        name: need("name"),
+        kind: options2.kind || "person",
+        ...options2.summary ? { summary: options2.summary } : {}
+      });
     case "task-create":
       return api2("/tasks", {
         id: need("id"),
@@ -4134,6 +4141,7 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   task-status --id ID --version N --status review --result TEXT
   checkpoint --id ID --version N --summary TEXT
   export --file FILE             Save a consistent wiki JSON export, excluding credentials
+  entity --name NAME [--kind person|company --summary TEXT]  Add to Network
 
 All commands support --config PATH. Credentials are stored with mode 0600.
 A send is saved before delivery; retry preserves its ID after a network failure.
@@ -4183,6 +4191,12 @@ Use your existing tools and credentials for coding, deployment, and email.`);
       provider: options.provider || "Independent",
       role: options.role || "Collaborator",
       capabilities: (options.capabilities || "").split(",").filter(Boolean)
+    }).catch((error) => {
+      if (error.status === 401 && options["invite-file"])
+        error.message += " The setup link is used up, expired or was replaced. Ask the workspace owner for a new setup message.";
+      if (error.status === 409 && /taken/i.test(error.message))
+        error.message += " Add a number, e.g. " + options.name + "-2.";
+      throw error;
     });
     await save(configPath, {
       ...target2,

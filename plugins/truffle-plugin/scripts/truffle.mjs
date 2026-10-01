@@ -57,7 +57,12 @@ async function run(argv) {
       process.off("SIGTERM", stop);
       code === 0
         ? done(JSON.parse(output))
-        : reject(Error(error.trim() || "Client stopped before completion."));
+        : reject(
+            Error(
+              error.trim().replace(/^Truffle: /, "") ||
+                "Client stopped before completion.",
+            ),
+          );
     });
   });
 }
@@ -156,7 +161,7 @@ Token-only invitations remain supported with --invite-file FILE.
 Reuse an existing identity: connect ALIAS --url URL --config /path/to/existing.json.
 With multiple workspaces, --workspace ALIAS is required on every action.
 Shared data: context, pages, page, search, write, changes, tasks, task-create, claim,
-task-status, checkpoint, export. Use client help for their named arguments.
+task-status, checkpoint, export, entity (Network). Use client help for their named arguments.
 Chat commands: me, agents, rooms, join, leave, read, thread, send, reply, retry, inbox, events, ack, status. Tokens never appear in output.
 Connections are stored outside the plugin. Updates preserve identities and pending sends.`);
     return;
@@ -215,16 +220,32 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
         throw Error(
           "This alias already points to another workspace. Choose a new alias.",
         );
-      const config =
+      let config =
         old?.config ||
         (imported
           ? resolve(imported)
           : join(base, "identities", profile + "-" + alias + ".json"));
       if (old && imported && resolve(imported) !== config)
         throw Error("This connection already has a saved identity.");
-      const saved = await read(config);
+      let saved = await read(config);
       if (imported && !saved)
         throw Error("Existing config file was not found.");
+      // A new setup link after the owner disconnected this bot: join again in a
+      // new identity file. Its saved runtime and sender choices still apply.
+      if (saved && dest.invite && !imported) {
+        const revoked = await run(["me", "--config", config]).then(
+          () => false,
+          (e) => /HTTP 401/.test(e.message),
+        );
+        if (revoked) {
+          config = join(base, "identities", `${profile}-${alias}-${Date.now()}.json`);
+          saved = null;
+        }
+      }
+      if (saved && name && saved.name.toLowerCase() !== name.toLowerCase())
+        throw Error(
+          `Profile ${profile} already connects @${saved.name} here. Use another --profile for a second bot.`,
+        );
       if (
         saved &&
         (saved.workspace !== dest.workspace ||
@@ -339,6 +360,7 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
       "task-status",
       "checkpoint",
       "export",
+      "entity",
       "activate",
       "resume",
       "pause",
