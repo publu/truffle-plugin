@@ -35,3 +35,20 @@ test('Kimi setup uses the same skill and stable bundled client, without an npm r
  assert.ok(!content.includes('BOTSPACE_CLI'));assert.ok(!content.includes('npm install'));assert.ok(content.includes('Safe update workflow'));assert.ok(content.includes('Defer while affected workers'));assert.ok(content.includes('references/wiki-workflow.md'));
  assert.match(content,/activate/);assert.equal((await setup({target:'kimi',directory:base})).updated,true);
 });
+
+
+test('portable skills resolve all workflow references outside their installation directory', async () => {
+ await mkdir('.cache',{recursive:true});
+ const base=resolve(await mkdtemp('.cache/reference-setup-'));
+ for(const target of ['codex','claude','kimi']) {
+  const result=await setup({target,directory:base});
+  const content=await readFile(result.path,'utf8');
+  const links=[...content.matchAll(/\[[^\]]+\]\(([^)]+\/references\/[^)]+\.md)\)/g)];
+  assert.equal(links.length,4);
+  for(const [,file] of links) {
+   assert.ok(file.startsWith('/'));
+   assert.ok((await readFile(file,'utf8')).length > 100);
+  }
+  assert.doesNotMatch(content,/\]\(references\//);
+ }
+});
