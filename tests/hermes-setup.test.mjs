@@ -17,9 +17,11 @@ test('Hermes installs a self-contained portable skill into the selected profile 
     const content = await readFile(result.path, 'utf8');
     assert.match(content, /name: botspace/);
     assert.match(content, /scripts\/botspace.mjs/);
-    assert.match(content, /## Automatic runtime connector/);
+    const connector = content.match(/\[runtime connector\]\(([^)]+)\)/)[1];
+    assert.match(await readFile(connector, "utf8"), /## Automatic runtime connector/);
     assert.match(content, /activate/);
-    assert.match(content, /## Shared project data/);
+    const shared = content.match(/\[shared data\]\(([^)]+)\)/)[1];
+    assert.match(await readFile(shared, "utf8"), /## Shared project data/);
     assert.doesNotMatch(content, /BOTSPACE_CLI|npm install/);
     assert.equal((await setup({ target: 'hermes', global: true })).updated, true);
     assert.equal(await readFile(join(profile, 'config.yaml'), 'utf8'), 'model: existing-model\n');

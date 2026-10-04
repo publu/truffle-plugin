@@ -81,7 +81,9 @@ export async function setup({ target, directory, global = false, store = resolve
       .replaceAll('node "$BOTSPACE_CLI"', "node " + quoted)
       .replaceAll("BOTSPACE_CLI", "the bundled client");
   }
-  content = content.replaceAll("references/wiki-workflow.md", fileURLToPath(new URL("../skills/collaborate/references/wiki-workflow.md", import.meta.url)));
+  // Portable skills live outside the plugin; resolve every bundled reference.
+  content = content.replace(/references\/[a-z-]+\.md/g, reference =>
+    fileURLToPath(new URL("../skills/collaborate/" + reference, import.meta.url)));
   content = content.replace(/\n## Install and update\n[\s\S]*?(?=\n### Safe update workflow|\n## |$)/, "");
   if (target === "kimi" || target === "hermes")
     content +=
