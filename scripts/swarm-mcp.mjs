@@ -269,7 +269,11 @@ try {
     "botspace_contact_profile",
     "Save a person's structured profile. Education/work goes in profile.history with organization ID/name, relation, role, dates and sources. Preserve the full existing history; ordinary notes are for relationship context. Read back to verify.",
     {id, version: z.number().int().positive(), profile: z.record(z.string(), z.unknown())}, false,
-    ({id, version, profile}, signal) => call("entities", {id, version, profile}, signal),
+    async ({id, version, profile}, signal) => {
+      const current = await call("entities/" + encodeURIComponent(id), undefined, signal);
+      if (!Object.hasOwn(current, "profile")) throw Error("This website does not support structured profile saves yet. Deploy the website update first; no contact was changed.");
+      return call("entities", {id, version, profile}, signal);
+    },
   );
   server.registerResource(
     "swarm-context",

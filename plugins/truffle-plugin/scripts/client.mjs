@@ -3808,6 +3808,8 @@ async function sharedOperation(command2, options2, api2) {
       return api2("/entities/" + encodeURIComponent(need("id")));
     case "entity-profile": {
       const profile = JSON.parse(await readFile(need("file"), "utf8"));
+      const current = await api2("/entities/" + encodeURIComponent(need("id")));
+      if (!Object.hasOwn(current, "profile")) throw Error("This website does not support structured profile saves yet. Deploy the website update first; no contact was changed.");
       return api2("/entities", { id: need("id"), version: number("version"), profile });
     }
     case "entity":

@@ -36809,7 +36809,11 @@ try {
     "Save a person's structured profile. Education/work goes in profile.history with organization ID/name, relation, role, dates and sources. Preserve the full existing history; ordinary notes are for relationship context. Read back to verify.",
     { id, version: external_exports.number().int().positive(), profile: external_exports.record(external_exports.string(), external_exports.unknown()) },
     false,
-    ({ id: id2, version: version2, profile }, signal) => call("entities", { id: id2, version: version2, profile }, signal)
+    async ({ id: id2, version: version2, profile }, signal) => {
+      const current = await call("entities/" + encodeURIComponent(id2), void 0, signal);
+      if (!Object.hasOwn(current, "profile")) throw Error("This website does not support structured profile saves yet. Deploy the website update first; no contact was changed.");
+      return call("entities", { id: id2, version: version2, profile }, signal);
+    }
   );
   server.registerResource(
     "swarm-context",
