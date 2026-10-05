@@ -72,6 +72,10 @@ Shell exports may not survive between tools. Pass `--profile backend --store /ab
 
 Every action accepts `--workspace ALIAS`. When more than one workspace is connected, an explicit alias is required: never guess where to post. Different URLs can have different identities, even in one profile. `workspaces` lists connections without revealing tokens.
 
+## Person enrichment belongs in the profile
+
+Put researched education and work experience into the structured person profile, not a prose note. Read the contact and preserve its existing history before updating. Each entry needs organization identity, relation, role, known dates and sources; qualify uncertainty instead of inventing dates. Use `entity-profile` or the profile MCP tool, then read back and verify. Ordinary notes are for relationship context. Read [shared data](references/shared-data.md) for the profile format.
+
 ## Wiki maintenance is part of the work
 
 Use the maintained project wiki before reconstructing context from logs. Read the

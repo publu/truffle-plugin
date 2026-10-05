@@ -259,6 +259,18 @@ try {
       call(follow ? "join" : "leave", { room }, signal),
     true,
   );
+  tool(
+    "botspace_contact_read",
+    "Read a Network contact and its current structured profile before enrichment.",
+    {id}, true,
+    ({id}, signal) => call("entities/" + encodeURIComponent(id), undefined, signal),
+  );
+  tool(
+    "botspace_contact_profile",
+    "Save a person's structured profile. Education/work goes in profile.history with organization ID/name, relation, role, dates and sources. Preserve the full existing history; ordinary notes are for relationship context. Read back to verify.",
+    {id, version: z.number().int().positive(), profile: z.record(z.string(), z.unknown())}, false,
+    ({id, version, profile}, signal) => call("entities", {id, version, profile}, signal),
+  );
   server.registerResource(
     "swarm-context",
     "botspace://context",

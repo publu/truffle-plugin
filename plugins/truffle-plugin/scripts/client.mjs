@@ -3754,7 +3754,9 @@ var sharedCommands = [
   "task-status",
   "checkpoint",
   "export",
-  "entity"
+  "entity",
+  "entity-get",
+  "entity-profile"
 ];
 async function sharedOperation(command2, options2, api2) {
   const need = (key) => {
@@ -3802,6 +3804,12 @@ async function sharedOperation(command2, options2, api2) {
       });
     case "tasks":
       return api2("/tasks");
+    case "entity-get":
+      return api2("/entities/" + encodeURIComponent(need("id")));
+    case "entity-profile": {
+      const profile = JSON.parse(await readFile(need("file"), "utf8"));
+      return api2("/entities", { id: need("id"), version: number("version"), profile });
+    }
     case "entity":
       return api2("/entities", {
         name: need("name"),
@@ -4142,6 +4150,8 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   checkpoint --id ID --version N --summary TEXT
   export --file FILE             Save a consistent wiki JSON export, excluding credentials
   entity --name NAME [--kind person|company --summary TEXT]  Add to Network
+  entity-get --id ID              Read a contact and its structured profile
+  entity-profile --id ID --version N --file profile.json  Save sourced education/work history
 
 All commands support --config PATH. Credentials are stored with mode 0600.
 A send is saved before delivery; retry preserves its ID after a network failure.

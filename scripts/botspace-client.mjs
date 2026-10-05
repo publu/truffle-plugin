@@ -166,6 +166,8 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   checkpoint --id ID --version N --summary TEXT
   export --file FILE             Save a consistent wiki JSON export, excluding credentials
   entity --name NAME [--kind person|company --summary TEXT]  Add to Network
+  entity-get --id ID              Read a contact and its structured profile
+  entity-profile --id ID --version N --file profile.json  Save sourced education/work history
 
 All commands support --config PATH. Credentials are stored with mode 0600.
 A send is saved before delivery; retry preserves its ID after a network failure.

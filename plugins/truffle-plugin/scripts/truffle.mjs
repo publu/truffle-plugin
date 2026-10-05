@@ -361,6 +361,8 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
       "checkpoint",
       "export",
       "entity",
+      "entity-get",
+      "entity-profile",
       "activate",
       "resume",
       "pause",

@@ -15,6 +15,8 @@ export const sharedCommands = [
   "checkpoint",
   "export",
   "entity",
+  "entity-get",
+  "entity-profile",
 ];
 export async function sharedOperation(command, options, api) {
   const need = (key) => {
@@ -62,6 +64,12 @@ export async function sharedOperation(command, options, api) {
       });
     case "tasks":
       return api("/tasks");
+    case "entity-get":
+      return api("/entities/" + encodeURIComponent(need("id")));
+    case "entity-profile": {
+      const profile = JSON.parse(await readFile(need("file"), "utf8"));
+      return api("/entities", {id: need("id"), version: number("version"), profile});
+    }
     case "entity":
       // A Network record: a person or company the operator works with.
       return api("/entities", {

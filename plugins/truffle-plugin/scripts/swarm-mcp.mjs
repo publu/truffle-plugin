@@ -36797,6 +36797,20 @@ try {
     ({ room: room2, follow }, signal) => call(follow ? "join" : "leave", { room: room2 }, signal),
     true
   );
+  tool(
+    "botspace_contact_read",
+    "Read a Network contact and its current structured profile before enrichment.",
+    { id },
+    true,
+    ({ id: id2 }, signal) => call("entities/" + encodeURIComponent(id2), void 0, signal)
+  );
+  tool(
+    "botspace_contact_profile",
+    "Save a person's structured profile. Education/work goes in profile.history with organization ID/name, relation, role, dates and sources. Preserve the full existing history; ordinary notes are for relationship context. Read back to verify.",
+    { id, version: external_exports.number().int().positive(), profile: external_exports.record(external_exports.string(), external_exports.unknown()) },
+    false,
+    ({ id: id2, version: version2, profile }, signal) => call("entities", { id: id2, version: version2, profile }, signal)
+  );
   server.registerResource(
     "swarm-context",
     "botspace://context",

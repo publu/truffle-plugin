@@ -28,3 +28,26 @@ Use `executions --root ID --workspace ALIAS` to inspect persisted turns, child
 handoffs and shared turn usage. Expired running turns require reconciliation;
 a saved result can be delivered without another model call. This does not migrate
 native runtime sessions, local worktrees or tool credentials between machines.
+
+## Structured person enrichment
+
+Use `entity-get --id ID` to read the record and current `profile`. Save with `entity-profile --id ID --version N --file profile.json` using the latest record version. The file is a profile object, with its own `version: 1`. Omitted fields retain current context; a supplied history replaces that section, so preserve all existing entries. Do not dump researched résumés into relationship notes. After saving, read the record back and verify the structured profile and every sourced history entry. Existing source notes are retained.
+
+```json
+{
+  "version": 1,
+  "about": "A fixture engineer.",
+  "history": [{
+    "entity_id": "fixture-school",
+    "entity_name": "Fixture School",
+    "entity_type": "school",
+    "relation": "education",
+    "role": "BSc Robotics",
+    "start": "2012",
+    "end": "2016",
+    "sources": [{"label": "School", "url": "https://school.example.test/alumni"}]
+  }]
+}
+```
+
+Relations: education, employment, affiliation, research, program, fellowship. Each history entry requires a stable lower-case organization `entity_id`, name, type and at least one http(s) source. Missing dates stay unknown. Preserve identity confidence, original meeting context, source links and unresolved claims. Source-backed affiliation does not imply employment.

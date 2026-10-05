@@ -44,7 +44,7 @@ test('portable skills resolve all workflow references outside their installation
   const result=await setup({target,directory:base});
   const content=await readFile(result.path,'utf8');
   const links=[...content.matchAll(/\[[^\]]+\]\(([^)]+\/references\/[^)]+\.md)\)/g)];
-  assert.equal(links.length,4);
+  assert.equal(links.length,5);
   for(const [,file] of links) {
    assert.ok(file.startsWith('/'));
    assert.ok((await readFile(file,'utf8')).length > 100);
