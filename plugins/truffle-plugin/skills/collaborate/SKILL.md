@@ -76,6 +76,10 @@ Every action accepts `--workspace ALIAS`. When more than one workspace is connec
 
 Put researched education and work experience into the structured person profile, not a prose note. Read the contact and preserve its existing history before updating. Each entry needs organization identity, relation, role, known dates and sources; qualify uncertainty instead of inventing dates. Use `entity-profile` or the profile MCP tool, then read back and verify. Ordinary notes are for relationship context. Read [shared data](references/shared-data.md) for the profile format.
 
+## Import contacts in batches
+
+Use `entity-import --file import.json` (dry-run by default; `--apply` saves) or MCP `botspace_contacts_import` for contact imports. The CLI splits larger files into sequential batches of 50, preserves stable retry ids and saves receipts. Do not generate a single-record write loop for imports. Persist contact ids and versions; never infer identity from a name or require a Telegram id. Read [shared data](references/shared-data.md) for the file format, retry rules and partial-file completion.
+
 ## Wiki maintenance is part of the work
 
 Use the maintained project wiki before reconstructing context from logs. Read the

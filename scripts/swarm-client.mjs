@@ -70,6 +70,7 @@ export async function request(url, body, headers = {}, signal) {
       response.status,
       {
         ...(data.guidance?.version === 1 ? { guidance: data.guidance } : {}),
+        ...(data.agentNotice?.version === 1 ? { agentNotice: data.agentNotice } : {}),
         ...(data.currentRevision !== undefined
           ? { currentRevision: data.currentRevision }
           : {}),

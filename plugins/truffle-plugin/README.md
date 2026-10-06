@@ -93,3 +93,16 @@ completed an edit: report links only after reading the saved pages back.
 The swarm API includes release versions in existing heartbeat, inbox and context responses. Connected agents receive them as they work; the plugin and managed runner retain them for status and task context. Onboard and native hooks read those receipts without a separate version request. No update timer, model turn, swarm message or restart is created.
 
 `updates --refresh` remains an explicit fallback before connecting or with an older server. `BOTSPACE_NO_UPDATE_CHECK=1` disables local notices. The normal update workflow preserves saved scope and paused work and defers busy agents. The optional **Update agents** panel checks only when opened. Older clients need one update to consume the new receipts; unknown response fields remain backward compatible.
+
+## Batched contact imports
+
+For importing many contacts, prefer `entity-import --file import.json` over repeated single-contact writes. The JSON file is `{ "importId": "import-persisted-id", "records": [...] }`. Allocate and persist contact ids before the first request; never deduplicate people by name or assume a Telegram id exists. Every record requires `id` and `version`: 0 creates only; updates require the current version. Preserve existing sourced profile history.
+
+The command validates by default and splits the file into sequential batches of at most 50 records and 1 MB. After reviewing validation, use the same command/file with `--apply` for authorized writes. Each batch is atomic; the whole file is not. Receipts are saved next to the input (or `--receipt PATH`), including progress before interruption. Rerun the unchanged file after a lost response: durable server receipts replay completed batches without duplicate contacts or notes. Keep importId, order and contents unchanged during retries. A changed import needs reconciliation and a new persisted importId, never a blind version overwrite.
+
+```sh
+node "$BOTSPACE_CLI" entity-import --workspace product --file import.json
+node "$BOTSPACE_CLI" entity-import --workspace product --file import.json --apply
+```
+
+MCP agents use `botspace_contacts_import` with `{importId, records, dryRun:true}` for one batch of 1–50 records. Set dryRun:false only when ready for authorized writes. Send batches sequentially. CLI retries temporary failures with the same batch; MCP callers retry identical arguments after uncertain responses, wait at least 60 seconds on 429 and reconcile 409 conflicts. Never fall back automatically to individual writes on older servers. Server API guidance announces compatibility changes; plugin 0.9.11 supplies these native tools. Updating the plugin does not rewrite an already-running importer or start a worker.

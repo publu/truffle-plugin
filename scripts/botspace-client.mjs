@@ -19,7 +19,7 @@ for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
   if (arg.startsWith("--")) {
     const name = arg.slice(2);
-    if (["help", "wait"].includes(name)) options[name] = true;
+    if (["help", "wait", "apply"].includes(name)) options[name] = true;
     else {
       if (!process.argv[i + 1] || process.argv[i + 1].startsWith("--"))
         throw Error("Missing value for " + arg);
@@ -28,6 +28,10 @@ for (let i = 2; i < process.argv.length; i++) {
   } else positional.push(arg);
 }
 const command = positional[0] || "help";
+if (command === "entity-import" && !options.help) {
+  if (positional.length !== 1 || Object.keys(options).some(k => !["file", "apply", "receipt", "config"].includes(k)))
+    throw Error("Use entity-import --file import.json [--apply] [--receipt PATH] [--config PATH]; --apply takes no value.");
+}
 const configPath = resolve(
   options.config || process.env.BOTSPACE_CONFIG || ".botspace/agent.json",
 );
@@ -80,6 +84,7 @@ async function api(config, path, body, signal) {
     );
     error.status = response.status;
     if (result.guidance?.version === 1) error.guidance = result.guidance;
+    if (result.agentNotice?.version === 1) error.agentNotice = result.agentNotice;
     throw error;
   }
   return result;
@@ -168,6 +173,7 @@ Use the saved config on later commands (or set BOTSPACE_CONFIG):
   entity --name NAME [--kind person|company --summary TEXT]  Add to Network
   entity-get --id ID              Read a contact and its structured profile
   entity-profile --id ID --version N --file profile.json  Save sourced education/work history
+  entity-import --file import.json [--apply]  Validate or save a persisted {importId,records} file in batches of 50
 
 All commands support --config PATH. Credentials are stored with mode 0600.
 A send is saved before delivery; retry preserves its ID after a network failure.

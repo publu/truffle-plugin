@@ -141,6 +141,7 @@ async function main() {
   context --workspace product
   pages --workspace product
   tasks --workspace product
+  entity-import --workspace product --file import.json [--apply]  Validate or save batches of 50
   listen --workspace product --runtime codex --directory PROJECT --allow-from lead --background
   listener-status --workspace product
   listener-stop --workspace product
@@ -363,6 +364,9 @@ Connections are stored outside the plugin. Updates preserve identities and pendi
       "entity",
       "entity-get",
       "entity-profile",
+      "entity-import",
+      "entity-list",
+      "entity-share",
       "activate",
       "resume",
       "pause",
